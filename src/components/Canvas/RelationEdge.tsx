@@ -1,0 +1,197 @@
+import { memo } from 'react';
+import {
+  BaseEdge,
+  EdgeLabelRenderer,
+  getSmoothStepPath,
+  type EdgeProps,
+} from '@xyflow/react';
+import { X, Link2 } from 'lucide-react';
+import type { RelationEdge as RelationEdgeType, RelationType } from '@/types';
+import { useDiagramStore, useUIStore } from '@/store';
+import { cn } from '@/lib/utils';
+
+function RelationEdgeComponent({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  data,
+  selected,
+}: EdgeProps<RelationEdgeType>) {
+  const deleteEdge = useDiagramStore((s) => s.deleteEdge);
+  const selectEdge = useUIStore((s) => s.selectEdge);
+
+  const [edgePath, labelX, labelY] = getSmoothStepPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+    borderRadius: 12,
+  });
+
+  const cardinality = getCardinalityNotation(data?.type ?? 'one-to-many');
+  const label = data?.label || data?.foreignKeyName || cardinality.label;
+
+  // Edges that span 2+ columns pass behind intermediate nodes (SVG renders below HTML nodes).
+  // For those, duplicate the path inside EdgeLabelRenderer which renders above nodes.
+  const isLongEdge = targetX - sourceX > 640;
+
+  const edgeStroke = selected ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))';
+  const edgeStrokeWidth = selected ? 2.25 : 1.5;
+  const edgeDash = data?.isIdentifying ? undefined : '6 4';
+
+  return (
+    <>
+      <BaseEdge
+        id={id}
+        path={edgePath}
+        style={{
+          stroke: edgeStroke,
+          strokeWidth: edgeStrokeWidth,
+          strokeDasharray: edgeDash,
+        }}
+      />
+
+      <CardinalityMarker
+        x={sourceX}
+        y={sourceY}
+        position={sourcePosition}
+        notation={cardinality.source}
+        selected={selected ?? false}
+      />
+      <CardinalityMarker
+        x={targetX}
+        y={targetY}
+        position={targetPosition}
+        notation={cardinality.target}
+        selected={selected ?? false}
+      />
+
+      <EdgeLabelRenderer>
+        {isLongEdge && (
+          <svg
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: 1,
+              height: 1,
+              overflow: 'visible',
+              pointerEvents: 'none',
+            }}
+          >
+            <path
+              d={edgePath}
+              fill="none"
+              stroke={edgeStroke}
+              strokeWidth={edgeStrokeWidth}
+              strokeDasharray={edgeDash}
+            />
+          </svg>
+        )}
+        <div
+          style={{ transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)` }}
+          className="absolute pointer-events-auto flex items-center gap-1"
+          onClick={(e) => {
+            e.stopPropagation();
+            selectEdge(id);
+          }}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            selectEdge(id);
+          }}
+        >
+          <button
+            className={cn(
+              'px-2 py-0.5 rounded-full text-[10px] font-mono tracking-tight border transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap',
+              selected
+                ? 'bg-primary text-primary-foreground border-primary shadow-md'
+                : 'bg-card text-muted-foreground border-border hover:border-foreground/40 hover:text-foreground'
+            )}
+            title="Click to edit relation properties"
+          >
+            <Link2 className="w-3 h-3 flex-shrink-0" />
+            <span className="font-semibold">{cardinality.label}</span>
+            {data?.showLabel !== false && <span>· {label}</span>}
+          </button>
+          {selected && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                deleteEdge(id);
+                selectEdge(null);
+              }}
+              className="ml-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:bg-destructive/90 transition-colors"
+              title="Delete relation"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+      </EdgeLabelRenderer>
+    </>
+  );
+}
+
+interface CardinalityMarkerProps {
+  x: number;
+  y: number;
+  position: string;
+  notation: 'one' | 'many';
+  selected: boolean;
+}
+
+function CardinalityMarker({ x, y, position, notation, selected }: CardinalityMarkerProps) {
+  const stroke = selected ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))';
+  const horizontal = position === 'left' || position === 'right';
+  const dir = position === 'left' || position === 'top' ? -1 : 1;
+  const offset = 18;
+
+  if (notation === 'one') {
+    return horizontal ? (
+      <g stroke={stroke} strokeWidth={1.7} fill="none">
+        <line x1={x + dir * offset} y1={y - 7} x2={x + dir * offset} y2={y + 7} />
+      </g>
+    ) : (
+      <g stroke={stroke} strokeWidth={1.7} fill="none">
+        <line x1={x - 7} y1={y + dir * offset} x2={x + 7} y2={y + dir * offset} />
+      </g>
+    );
+  }
+
+  if (horizontal) {
+    return (
+      <g stroke={stroke} strokeWidth={1.7} fill="none">
+        <line x1={x} y1={y} x2={x + dir * offset} y2={y - 7} />
+        <line x1={x} y1={y} x2={x + dir * offset} y2={y} />
+        <line x1={x} y1={y} x2={x + dir * offset} y2={y + 7} />
+      </g>
+    );
+  }
+
+  return (
+    <g stroke={stroke} strokeWidth={1.7} fill="none">
+      <line x1={x} y1={y} x2={x - 7} y2={y + dir * offset} />
+      <line x1={x} y1={y} x2={x} y2={y + dir * offset} />
+      <line x1={x} y1={y} x2={x + 7} y2={y + dir * offset} />
+    </g>
+  );
+}
+
+function getCardinalityNotation(type: RelationType): { source: 'one' | 'many'; target: 'one' | 'many'; label: string } {
+  switch (type) {
+    case 'one-to-one':
+      return { source: 'one', target: 'one', label: '1:1' };
+    case 'one-to-many':
+      return { source: 'one', target: 'many', label: '1:N' };
+    case 'many-to-many':
+      return { source: 'many', target: 'many', label: 'N:M' };
+  }
+}
+
+export const RelationEdge = memo(RelationEdgeComponent);
