@@ -5,7 +5,7 @@ export const APP_VERSION = '1.0.0';
 export const STORAGE_KEY = 'schema-erd-workspace';
 export const THEME_KEY = 'schema-theme';
 
-/** Paleta de colores asignable a tablas (acento por entidad) */
+/** Color palette assignable to tables (accent per entity/module) */
 export const TABLE_COLORS = [
   '#0ea5e9', // sky
   '#8b5cf6', // violet

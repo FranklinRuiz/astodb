@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   X,
   Plus,
@@ -25,9 +25,30 @@ import {
 } from '@/components/UI/select';
 import { useDiagramStore, useUIStore } from '@/store';
 import { REFERENTIAL_ACTIONS, type Column, type RelationType, type ReferentialAction } from '@/types';
-import { TypeInput } from '@/components/UI/type-input';
 import { TABLE_COLORS } from '@/constants';
 import { cn } from '@/lib/utils';
+
+const BASE_TYPES = [
+  'INT', 'BIGINT', 'SMALLINT', 'TINYINT', 'BIT',
+  'DECIMAL', 'NUMERIC', 'MONEY', 'SMALLMONEY', 'FLOAT', 'REAL',
+  'NVARCHAR', 'VARCHAR', 'CHAR', 'NCHAR',
+  'DATE', 'TIME', 'DATETIME', 'DATETIME2', 'SMALLDATETIME', 'DATETIMEOFFSET',
+  'UNIQUEIDENTIFIER', 'XML', 'VARBINARY', 'BINARY',
+  'TEXT', 'NTEXT', 'IMAGE', 'SQL_VARIANT', 'HIERARCHYID', 'GEOMETRY', 'GEOGRAPHY',
+];
+
+const PARAM_TYPES = new Set([
+  'NVARCHAR', 'VARCHAR', 'CHAR', 'NCHAR',
+  'DECIMAL', 'NUMERIC', 'FLOAT',
+  'VARBINARY', 'BINARY',
+  'TIME', 'DATETIME2', 'DATETIMEOFFSET',
+]);
+
+function parseTypeParam(type: string): { base: string; param: string } {
+  const m = type.match(/^([A-Z_]+)\((.+)\)$/i);
+  if (m) return { base: m[1].toUpperCase(), param: m[2] };
+  return { base: type.toUpperCase().split('(')[0].trim(), param: '' };
+}
 
 export function PropertiesPanel() {
   const isOpen = useUIStore((s) => s.isPropertiesOpen);
@@ -102,8 +123,12 @@ function TableProperties({ tableId }: { tableId: string }) {
       </div>
 
       <div className="rounded-md border border-border overflow-hidden">
-        <div className="grid grid-cols-[1.2fr_1fr_84px] gap-1 px-2 py-1.5 text-[10px] uppercase tracking-widest text-muted-foreground bg-muted/50">
-          <span>Name</span><span>Type</span><span>Flags</span>
+        <div className="flex items-center gap-2 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground bg-muted/50 border-b border-border/50">
+          <div className="w-3 flex-shrink-0" />
+          <span className="flex-1 min-w-0">Name</span>
+          <span className="w-24 flex-shrink-0">Type</span>
+          <span className="w-16 flex-shrink-0 text-right">Flags</span>
+          <div className="w-5 flex-shrink-0" />
         </div>
         <div className="divide-y divide-border/50">
           {table.columns.map((col, idx) => (
@@ -121,29 +146,76 @@ function ColumnEditor({ column, tableId, index, totalColumns }: { column: Column
   const deleteColumn = useDiagramStore((s) => s.deleteColumn);
   const reorderColumns = useDiagramStore((s) => s.reorderColumns);
 
+  const { base, param } = parseTypeParam(column.type);
+  const showLongitud = PARAM_TYPES.has(base);
+  const [localParam, setLocalParam] = useState(param);
+
+  useEffect(() => {
+    setLocalParam(parseTypeParam(column.type).param);
+  }, [column.type]);
+
+  const handleTypeChange = (newBase: string) => {
+    const keep = PARAM_TYPES.has(newBase) && localParam;
+    updateColumn(tableId, column.id, { type: keep ? `${newBase}(${localParam})` : newBase });
+  };
+
+  const commitLongitud = (val: string) => {
+    const trimmed = val.trim();
+    setLocalParam(trimmed);
+    updateColumn(tableId, column.id, { type: trimmed ? `${base}(${trimmed})` : base });
+  };
+
   return (
     <div className={cn('bg-background/50 transition-all', expanded && 'bg-accent/20')}>
-      <div className="grid grid-cols-[18px_1.2fr_1fr_84px_22px] items-center gap-1 px-2 py-1.5">
-        <GripVertical className="w-3 h-3 text-muted-foreground/40" />
-        <Input value={column.name} onChange={(e) => updateColumn(tableId, column.id, { name: e.target.value })} className="h-7 px-1.5 text-xs font-mono border-0 bg-transparent focus-visible:bg-background" placeholder="column_name" />
-        <TypeInput
-          value={column.type}
-          onChange={(val) => updateColumn(tableId, column.id, { type: val })}
+      <div className="flex items-center gap-2 px-2 py-1.5">
+        <GripVertical className="w-3 h-3 text-muted-foreground/40 flex-shrink-0" />
+
+        <Input
+          value={column.name}
+          onChange={(e) => updateColumn(tableId, column.id, { name: e.target.value })}
+          className="h-7 px-1.5 text-xs font-mono border-0 bg-transparent focus-visible:bg-background flex-1 min-w-0"
+          placeholder="column_name"
         />
-        <div className="flex items-center gap-0.5 justify-end">
+
+        <select
+          value={BASE_TYPES.includes(base) ? base : 'VARCHAR'}
+          onChange={(e) => handleTypeChange(e.target.value)}
+          className="h-7 w-24 flex-shrink-0 px-1.5 text-xs font-mono rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+        >
+          {BASE_TYPES.map((t) => (
+            <option key={t} value={t}>{t.toLowerCase()}</option>
+          ))}
+        </select>
+
+        <div className="flex items-center gap-0.5 flex-shrink-0">
           <ToggleIcon active={column.isPrimaryKey} onClick={() => updateColumn(tableId, column.id, { isPrimaryKey: !column.isPrimaryKey, isNullable: column.isPrimaryKey ? column.isNullable : false })} color="hsl(var(--erd-pk))" icon={<Key className="w-3 h-3" />} title="Primary Key" />
           <ToggleIcon active={column.isForeignKey} onClick={() => updateColumn(tableId, column.id, { isForeignKey: !column.isForeignKey })} color="hsl(var(--erd-fk))" icon={<Link2 className="w-3 h-3" />} title="Foreign Key" />
           <ToggleIcon active={column.isUnique} onClick={() => updateColumn(tableId, column.id, { isUnique: !column.isUnique })} color="hsl(var(--erd-unique))" icon={<Hash className="w-3 h-3" />} title="Unique" />
         </div>
-        <button onClick={() => setExpanded(!expanded)} className="text-muted-foreground hover:text-foreground p-0.5">{expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}</button>
+
+        <button onClick={() => setExpanded(!expanded)} className="w-5 flex-shrink-0 text-muted-foreground hover:text-foreground flex items-center justify-center">
+          {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        </button>
       </div>
 
       {expanded && (
         <div className="px-2 pb-2 space-y-2 border-t border-border/50 pt-2">
           <div className="grid grid-cols-2 gap-2">
-            <SwitchRow label="NN / Not Null" checked={!column.isNullable} onChange={(v) => updateColumn(tableId, column.id, { isNullable: !v })} disabled={column.isPrimaryKey} />
-            <SwitchRow label="AI / Auto Increment" checked={column.isAutoIncrement} onChange={(v) => updateColumn(tableId, column.id, { isAutoIncrement: v })} />
+            <SwitchRow label="Not Null" checked={!column.isNullable} onChange={(v) => updateColumn(tableId, column.id, { isNullable: !v })} disabled={column.isPrimaryKey} />
+            <SwitchRow label="Auto Increment" checked={column.isAutoIncrement} onChange={(v) => updateColumn(tableId, column.id, { isAutoIncrement: v })} />
           </div>
+          {showLongitud && (
+            <Field label="Length / precision">
+              <Input
+                value={localParam}
+                onChange={(e) => setLocalParam(e.target.value)}
+                onBlur={(e) => commitLongitud(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') commitLongitud(localParam); }}
+                className="h-7 text-xs font-mono"
+                placeholder="e.g. 50 or 10,2"
+              />
+            </Field>
+          )}
           <Field label="Default value" optional>
             <Input value={column.defaultValue ?? ''} onChange={(e) => updateColumn(tableId, column.id, { defaultValue: e.target.value })} className="h-7 text-xs font-mono" placeholder="NULL" />
           </Field>

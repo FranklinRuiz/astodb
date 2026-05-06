@@ -1,17 +1,14 @@
-import { memo, useState } from 'react';
+import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { Key, Link2, Hash, Wand2, AlertTriangle, CircleAlert } from 'lucide-react';
 import type { TableNode as TableNodeType, Column } from '@/types';
 import { useDiagramStore, useUIStore } from '@/store';
 import { cn } from '@/lib/utils';
-import { TypeInput } from '@/components/UI/type-input';
 
 function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeType>) {
   const { table, validationLevel = 'ok' } = data;
   const selectTable = useUIStore((s) => s.selectTable);
   const addColumn = useDiagramStore((s) => s.addColumn);
-  const updateTable = useDiagramStore((s) => s.updateTable);
-  const [editingName, setEditingName] = useState(false);
 
   return (
     // Outer wrapper has no overflow-hidden so protruding handles are visible.
@@ -55,27 +52,9 @@ function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeType>) {
           <div className="w-1 h-6 rounded-sm flex-shrink-0" style={{ backgroundColor: table.color }} />
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-mono">
-              <span>{table.schema ?? 'dbo'}</span>
-            </div>
-            {editingName ? (
-              <input
-                autoFocus
-                value={table.name}
-                onChange={(e) => updateTable(id, { name: e.target.value })}
-                onBlur={() => setEditingName(false)}
-                onKeyDown={(e) => e.key === 'Enter' && setEditingName(false)}
-                className="w-full bg-background rounded px-1 font-mono font-semibold text-sm outline-none border border-border"
-              />
-            ) : (
-              <h3
-                onDoubleClick={(e) => { e.stopPropagation(); setEditingName(true); }}
-                className="font-mono font-semibold text-sm tracking-tight truncate cursor-text"
-                title="Double click to rename"
-              >
-                {table.name}
-              </h3>
-            )}
+            <h3 className="font-mono font-semibold text-sm tracking-tight truncate">
+              <span className="font-normal text-muted-foreground">{table.schema ?? 'dbo'}.</span>{table.name}
+            </h3>
           </div>
 
           <div className="flex items-center gap-1">
@@ -100,7 +79,7 @@ function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeType>) {
             <div className="px-3 py-4 text-xs text-muted-foreground italic text-center">No columns</div>
           ) : (
             table.columns.map((col) => (
-              <ColumnRow key={col.id} column={col} tableId={id} />
+              <ColumnRow key={col.id} column={col} />
             ))
           )}
         </div>
@@ -109,15 +88,11 @@ function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeType>) {
   );
 }
 
-function ColumnRow({ column, tableId }: { column: Column; tableId: string }) {
-  const updateColumn = useDiagramStore((s) => s.updateColumn);
-  const [editingName, setEditingName] = useState(false);
-
+function ColumnRow({ column }: { column: Column }) {
   return (
     <div className="relative grid grid-cols-[18px_1fr_auto_86px] items-center gap-1.5 px-3 py-1.5 text-xs hover:bg-accent/40 transition-colors group/col">
 
-      {/* Source handle — kept inside the inner card bounds (right-[3px]) so
-          overflow-hidden does not clip it and ReactFlow measures it correctly. */}
+      {/* Source handle */}
       <Handle
         type="source"
         position={Position.Right}
@@ -145,35 +120,18 @@ function ColumnRow({ column, tableId }: { column: Column; tableId: string }) {
       </div>
 
       {/* Column name */}
-      {editingName ? (
-        <input
-          autoFocus
-          value={column.name}
-          onChange={(e) => updateColumn(tableId, column.id, { name: e.target.value })}
-          onBlur={() => setEditingName(false)}
-          onKeyDown={(e) => e.key === 'Enter' && setEditingName(false)}
-          className="h-5 bg-background border border-border rounded px-1 font-mono text-xs outline-none"
-        />
-      ) : (
-        <button
-          onDoubleClick={(e) => { e.stopPropagation(); setEditingName(true); }}
-          className={cn(
-            'font-mono truncate flex-1 text-left cursor-text',
-            column.isPrimaryKey && 'font-semibold',
-            column.isNullable ? 'text-foreground/80' : 'text-foreground',
-          )}
-          title="Double click to edit inline"
-        >
-          {column.name}
-        </button>
-      )}
+      <span
+        className={cn(
+          'font-mono truncate',
+          column.isPrimaryKey && 'font-semibold',
+          column.isNullable ? 'text-foreground/80' : 'text-foreground',
+        )}
+      >
+        {column.name}
+      </span>
 
-      {/* Data type — editable combobox */}
-      <TypeInput
-        value={column.type}
-        onChange={(val) => updateColumn(tableId, column.id, { type: val })}
-        compact
-      />
+      {/* Data type — read only */}
+      <span className="font-mono text-[10px] text-muted-foreground truncate">{column.type}</span>
 
       {/* Constraint badges */}
       <div className="flex items-center justify-end gap-1 text-[9px] font-mono uppercase tracking-wider">

@@ -26,7 +26,7 @@ const edgeTypes: EdgeTypes = { relationEdge: RelationEdge };
 
 export function Canvas() {
   const theme = useTheme();
-  const { screenToFlowPosition, fitView, getViewport, setViewport } = useReactFlow();
+  const { fitView, getViewport, setViewport } = useReactFlow();
 
   useEffect(() => {
     registerFlowInstance({ fitView, getViewport, setViewport });
@@ -36,7 +36,6 @@ export function Canvas() {
   const onNodesChange = useDiagramStore((s) => s.onNodesChange);
   const onEdgesChange = useDiagramStore((s) => s.onEdgesChange);
   const onConnect = useDiagramStore((s) => s.onConnect);
-  const addTable = useDiagramStore((s) => s.addTable);
   const selectTable = useUIStore((s) => s.selectTable);
   const selectEdge = useUIStore((s) => s.selectEdge);
 
@@ -58,22 +57,6 @@ export function Canvas() {
     selectTable(null);
     selectEdge(null);
   }, [selectTable, selectEdge]);
-
-  const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'copy';
-  }, []);
-
-  const handleDrop = useCallback(
-    (event: React.DragEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      const type = event.dataTransfer.getData('application/erd-node');
-      if (type !== 'table') return;
-      const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
-      addTable(position);
-    },
-    [addTable, screenToFlowPosition]
-  );
 
   const nodes = useMemo(() => {
     if (!activeDiagram) return [];
@@ -101,8 +84,6 @@ export function Canvas() {
         onConnect={onConnect}
         onSelectionChange={handleSelectionChange}
         onPaneClick={handlePaneClick}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
         defaultViewport={DEFAULT_VIEWPORT}
         connectionLineType={ConnectionLineType.SmoothStep}
         connectionRadius={48}

@@ -10,7 +10,7 @@ import {
   Table as TableIcon,
   AlertTriangle,
   CircleAlert,
-  GripVertical,
+  CheckCircle2,
   Pencil,
 } from 'lucide-react';
 import { Button } from '@/components/UI/button';
@@ -150,27 +150,6 @@ export function Sidebar() {
         </DropdownMenu>
       </div>
 
-      {/* Drag-to-canvas hint */}
-      <div className="px-3 py-3 border-b border-border bg-background/40">
-        <div
-          draggable
-          onDragStart={(event) => {
-            event.dataTransfer.setData('application/erd-node', 'table');
-            event.dataTransfer.effectAllowed = 'copy';
-          }}
-          className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3 cursor-grab active:cursor-grabbing hover:bg-primary/10 transition-colors"
-        >
-          <div className="flex items-center gap-2 text-xs font-semibold">
-            <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
-            <TableIcon className="w-4 h-4 text-primary" />
-            Drag table to canvas
-          </div>
-          <p className="mt-1 text-[10px] text-muted-foreground leading-relaxed">
-            Drop on canvas to create a table with PK/IDENTITY column.
-          </p>
-        </div>
-      </div>
-
       {/* Tables header */}
       <div className="px-3 py-2.5 flex items-center justify-between">
         <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
@@ -275,9 +254,11 @@ export function Sidebar() {
             onClick={() => { selectTable(null); setPropertiesOpen(true); }}
             className="w-full text-left px-2 py-1.5 rounded-md hover:bg-accent/50 flex items-center gap-2"
           >
-            {issues.some((i) => i.severity === 'error')
-              ? <CircleAlert className="w-3.5 h-3.5 text-destructive" />
-              : <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
+            {issues.length === 0
+              ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+              : issues.some((i) => i.severity === 'error')
+                ? <CircleAlert className="w-3.5 h-3.5 text-destructive" />
+                : <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
             <span className="text-xs">Model validation</span>
             <span className="ml-auto text-[10px] text-muted-foreground">{issues.length}</span>
           </button>

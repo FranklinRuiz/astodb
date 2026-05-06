@@ -1,7 +1,7 @@
 import type { FitViewOptions, Viewport } from '@xyflow/react';
 
 interface FlowInstance {
-  fitView: (options?: FitViewOptions) => boolean;
+  fitView: (options?: FitViewOptions) => Promise<boolean>;
   getViewport: () => Viewport;
   setViewport: (viewport: Viewport, options?: { duration?: number }) => Promise<boolean>;
 }

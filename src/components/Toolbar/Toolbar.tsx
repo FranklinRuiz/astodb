@@ -42,6 +42,7 @@ import {
   downloadFile,
 } from '@/utils/export';
 import { generateSQL } from '@/utils/sql-generator';
+import { getFlowInstance } from '@/utils/flowInstance';
 import { toast } from 'sonner';
 
 export function Toolbar() {
@@ -148,7 +149,17 @@ export function Toolbar() {
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="sm" onClick={autoLayout} className="h-8 gap-1.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                autoLayout();
+                setTimeout(() => {
+                  getFlowInstance()?.fitView({ padding: 0.2, maxZoom: 1, duration: 400 });
+                }, 50);
+              }}
+              className="h-8 gap-1.5"
+            >
               <LayoutGrid className="w-3.5 h-3.5" />
               <span className="text-xs">Auto layout</span>
             </Button>

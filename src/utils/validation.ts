@@ -1,8 +1,9 @@
 import type { Diagram, ValidationIssue, Table, Column } from '@/types';
 
-const numericFamilies = ['INT', 'BIGINT', 'SMALLINT', 'TINYINT', 'DECIMAL', 'FLOAT', 'DOUBLE'];
-const textFamilies = ['VARCHAR', 'TEXT', 'LONGTEXT', 'CHAR', 'UUID'];
-const dateFamilies = ['DATE', 'DATETIME', 'TIMESTAMP', 'TIME'];
+// SQL Server type families for FK compatibility checking
+const numericFamilies = ['INT', 'BIGINT', 'SMALLINT', 'TINYINT', 'DECIMAL', 'NUMERIC', 'FLOAT', 'REAL', 'MONEY', 'SMALLMONEY', 'BIT'];
+const textFamilies = ['VARCHAR', 'NVARCHAR', 'CHAR', 'NCHAR', 'TEXT', 'NTEXT'];
+const dateFamilies = ['DATE', 'DATETIME', 'DATETIME2', 'SMALLDATETIME', 'DATETIMEOFFSET', 'TIME'];
 
 export function validateDiagram(diagram: Diagram): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
@@ -16,7 +17,7 @@ export function validateDiagram(diagram: Diagram): ValidationIssue[] {
         id: `table-${table.id}-no-pk`,
         severity: 'warning',
         tableId: table.id,
-        message: `La tabla "${table.name}" no tiene Clave Primaria (PK). Abre la tabla, selecciona la columna identificadora y activa el icono de llave (PK).`,
+        message: `Table "${table.name}" has no Primary Key (PK). Open the table, select the identifier column and toggle the key icon (PK).`,
       });
     }
 
@@ -29,7 +30,7 @@ export function validateDiagram(diagram: Diagram): ValidationIssue[] {
           severity: 'error',
           tableId: table.id,
           columnId: column.id,
-          message: `Columna duplicada: "${column.name}" aparece más de una vez en la tabla "${table.name}". Cambia el nombre de una de las dos columnas.`,
+          message: `Duplicate column: "${column.name}" appears more than once in table "${table.name}". Rename one of the columns.`,
         });
       }
       names.add(normalized);
@@ -40,7 +41,7 @@ export function validateDiagram(diagram: Diagram): ValidationIssue[] {
           severity: 'error',
           tableId: table.id,
           columnId: column.id,
-          message: `La Clave Primaria "${column.name}" en la tabla "${table.name}" acepta valores NULL, lo cual no está permitido. Abre la tabla y desactiva la opción "Nullable" (NN) en esa columna.`,
+          message: `Primary Key "${column.name}" in table "${table.name}" allows NULL, which is not permitted. Open the table and disable the Nullable (NN) option on that column.`,
         });
       }
 
@@ -56,7 +57,7 @@ export function validateDiagram(diagram: Diagram): ValidationIssue[] {
             severity: 'error',
             tableId: table.id,
             columnId: column.id,
-            message: `La columna "${column.name}" de la tabla "${table.name}" está marcada como FK pero no tiene ninguna relación creada. Arrastra una conexión desde esta columna hacia la columna PK de la tabla destino, o desmarca el indicador FK si fue un error.`,
+            message: `Column "${column.name}" in table "${table.name}" is marked as FK but has no relation. Draw a connection from this column to the target table's PK column, or unmark FK if it was a mistake.`,
           });
         }
       }
@@ -76,7 +77,7 @@ export function validateDiagram(diagram: Diagram): ValidationIssue[] {
         id: `edge-${edge.id}-missing-column`,
         severity: 'error',
         edgeId: edge.id,
-        message: `La relación "${edge.data.label ?? edge.id}" apunta a una columna que ya no existe. Elimina esta relación y vuélvela a crear.`,
+        message: `Relation "${edge.data.label ?? edge.id}" points to a column that no longer exists. Delete this relation and recreate it.`,
       });
       continue;
     }
@@ -88,7 +89,7 @@ export function validateDiagram(diagram: Diagram): ValidationIssue[] {
         edgeId: edge.id,
         tableId: parent.id,
         columnId: parentColumn.id,
-        message: `La columna "${parentColumn.name}" de la tabla "${parent.name}" se usa como origen de una relación pero no está marcada como PK ni como UNIQUE. Las relaciones deben partir de una columna clave.`,
+        message: `Column "${parentColumn.name}" in table "${parent.name}" is used as a relation source but is not marked as PK or UNIQUE. Relations must start from a key column.`,
       });
     }
 
@@ -99,7 +100,7 @@ export function validateDiagram(diagram: Diagram): ValidationIssue[] {
         edgeId: edge.id,
         tableId: child.id,
         columnId: childColumn.id,
-        message: `La columna "${childColumn.name}" de la tabla "${child.name}" participa en una relación pero no tiene el indicador FK activado. Abre la tabla y marca esa columna como FK.`,
+        message: `Column "${childColumn.name}" in table "${child.name}" participates in a relation but is not marked as FK. Open the table and mark that column as FK.`,
       });
     }
 
@@ -108,7 +109,7 @@ export function validateDiagram(diagram: Diagram): ValidationIssue[] {
         id: `edge-${edge.id}-type-mismatch`,
         severity: 'error',
         edgeId: edge.id,
-        message: `Tipos incompatibles en la relación: "${parent.name}.${parentColumn.name}" es ${parentColumn.type} pero "${child.name}.${childColumn.name}" es ${childColumn.type}. Ambas columnas deben ser del mismo tipo para que la clave foránea funcione correctamente.`,
+        message: `Type mismatch in relation: "${parent.name}.${parentColumn.name}" is ${parentColumn.type} but "${child.name}.${childColumn.name}" is ${childColumn.type}. Both columns must be the same type for the foreign key to work correctly.`,
       });
     }
   }

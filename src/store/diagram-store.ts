@@ -203,7 +203,6 @@ export const useDiagramStore = create<DiagramStore>()(
             const node = d.nodes.find((n) => n.id === tableId);
             if (!node) return d;
             const newTable = createTable(`${node.data.table.name}_copy`, d.nodes.length, node.data.table.schema);
-            newTable.domain = node.data.table.domain;
             newTable.color = node.data.table.color;
             newTable.columns = node.data.table.columns.map((c) => ({ ...createColumn(), ...c, id: createColumn().id }));
             const newNode = createTableNode(newTable, {
@@ -414,7 +413,7 @@ function linkExistingForeignKey(
   const edge = createRelationEdge(parentTableId, parentColumnId, childTableId, childColumnId, 'one-to-many', {
     label,
     foreignKeyName: label,
-    onDelete: updatedChild.isNullable ? 'SET NULL' : 'RESTRICT',
+    onDelete: updatedChild.isNullable ? 'SET NULL' : 'NO ACTION',
     onUpdate: 'CASCADE',
   });
 
@@ -491,7 +490,7 @@ function createRelationshipBetweenTables(
   const edge = createRelationEdge(sourceTable.id, sourcePk.id, targetTable.id, targetColumn.id, type, {
     label,
     foreignKeyName: label,
-    onDelete: targetColumn.isNullable ? 'SET NULL' : 'RESTRICT',
+    onDelete: targetColumn.isNullable ? 'SET NULL' : 'NO ACTION',
     onUpdate: 'CASCADE',
   });
 
@@ -561,7 +560,7 @@ function normalizeColumn(column: Column): Column {
     ...column,
     isNullable: column.isPrimaryKey ? false : column.isNullable,
     isUnique: column.isPrimaryKey ? true : column.isUnique,
-    isAutoIncrement: column.isAutoIncrement && column.type === 'INT',
+    isAutoIncrement: column.isAutoIncrement && ['INT', 'BIGINT', 'SMALLINT', 'TINYINT'].includes(column.type),
   };
 }
 

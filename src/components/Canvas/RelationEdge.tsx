@@ -57,21 +57,6 @@ function RelationEdgeComponent({
         }}
       />
 
-      <CardinalityMarker
-        x={sourceX}
-        y={sourceY}
-        position={sourcePosition}
-        notation={cardinality.source}
-        selected={selected ?? false}
-      />
-      <CardinalityMarker
-        x={targetX}
-        y={targetY}
-        position={targetPosition}
-        notation={cardinality.target}
-        selected={selected ?? false}
-      />
-
       <EdgeLabelRenderer>
         {isLongEdge && (
           <svg
@@ -94,6 +79,34 @@ function RelationEdgeComponent({
             />
           </svg>
         )}
+
+        {/* Cardinality markers rendered above HTML nodes to avoid z-order clipping */}
+        <svg
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: 1,
+            height: 1,
+            overflow: 'visible',
+            pointerEvents: 'none',
+          }}
+        >
+          <CardinalityMarker
+            x={sourceX}
+            y={sourceY}
+            position={sourcePosition}
+            notation={cardinality.source}
+            selected={selected ?? false}
+          />
+          <CardinalityMarker
+            x={targetX}
+            y={targetY}
+            position={targetPosition}
+            notation={cardinality.target}
+            selected={selected ?? false}
+          />
+        </svg>
         <div
           style={{ transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)` }}
           className="absolute pointer-events-auto flex items-center gap-1"
@@ -150,35 +163,38 @@ function CardinalityMarker({ x, y, position, notation, selected }: CardinalityMa
   const stroke = selected ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))';
   const horizontal = position === 'left' || position === 'right';
   const dir = position === 'left' || position === 'top' ? -1 : 1;
-  const offset = 18;
+  // gap: distance from node border before the marker starts
+  const gap = 6;
+  const offset = 16;
 
   if (notation === 'one') {
     return horizontal ? (
       <g stroke={stroke} strokeWidth={1.7} fill="none">
-        <line x1={x + dir * offset} y1={y - 7} x2={x + dir * offset} y2={y + 7} />
+        <line x1={x + dir * (gap + offset)} y1={y - 7} x2={x + dir * (gap + offset)} y2={y + 7} />
       </g>
     ) : (
       <g stroke={stroke} strokeWidth={1.7} fill="none">
-        <line x1={x - 7} y1={y + dir * offset} x2={x + 7} y2={y + dir * offset} />
+        <line x1={x - 7} y1={y + dir * (gap + offset)} x2={x + 7} y2={y + dir * (gap + offset)} />
       </g>
     );
   }
 
+  // many — crow's foot: vertex at gap from node border, fan opens over offset
   if (horizontal) {
     return (
       <g stroke={stroke} strokeWidth={1.7} fill="none">
-        <line x1={x} y1={y} x2={x + dir * offset} y2={y - 7} />
-        <line x1={x} y1={y} x2={x + dir * offset} y2={y} />
-        <line x1={x} y1={y} x2={x + dir * offset} y2={y + 7} />
+        <line x1={x + dir * gap} y1={y} x2={x + dir * (gap + offset)} y2={y - 7} />
+        <line x1={x + dir * gap} y1={y} x2={x + dir * (gap + offset)} y2={y} />
+        <line x1={x + dir * gap} y1={y} x2={x + dir * (gap + offset)} y2={y + 7} />
       </g>
     );
   }
 
   return (
     <g stroke={stroke} strokeWidth={1.7} fill="none">
-      <line x1={x} y1={y} x2={x - 7} y2={y + dir * offset} />
-      <line x1={x} y1={y} x2={x} y2={y + dir * offset} />
-      <line x1={x} y1={y} x2={x + 7} y2={y + dir * offset} />
+      <line x1={x} y1={y + dir * gap} x2={x - 7} y2={y + dir * (gap + offset)} />
+      <line x1={x} y1={y + dir * gap} x2={x} y2={y + dir * (gap + offset)} />
+      <line x1={x} y1={y + dir * gap} x2={x + 7} y2={y + dir * (gap + offset)} />
     </g>
   );
 }
