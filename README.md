@@ -2,6 +2,15 @@
 
 **astoDB** is a professional, browser-based physical database modeling tool designed specifically for **Microsoft SQL Server**. It lets you design, visualize, and document relational database schemas through an interactive canvas, and generates ready-to-run **T-SQL DDL scripts** from your diagrams.
 
+<div align="center">
+  <br />
+  <a href="https://franklinruiz.github.io/astodb/">
+    <img src="https://img.shields.io/badge/Live%20Demo-Try%20it%20Now-brightgreen?style=for-the-badge&logo=rocket" alt="Live Demo" />
+  </a>
+  <br />
+  <br />
+</div>
+
 ---
 
 ## Features
