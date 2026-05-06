@@ -104,7 +104,7 @@ function TableProperties({ tableId }: { tableId: string }) {
             <button
               key={color}
               onClick={() => updateTable(tableId, { color })}
-              className={cn('w-6 h-6 rounded-md transition-all', table.color === color ? 'ring-2 ring-offset-2 ring-offset-card ring-foreground scale-110' : 'hover:scale-110')}
+              className={cn('w-6 h-6 rounded-md transition-all', table.color === color ? 'ring-2 ring-offset-1 ring-offset-card ring-foreground/50 scale-110' : 'hover:scale-110')}
               style={{ backgroundColor: color }}
             />
           ))}
