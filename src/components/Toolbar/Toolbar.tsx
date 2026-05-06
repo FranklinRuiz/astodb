@@ -6,7 +6,7 @@ import {
   Sun,
   Moon,
   FileCode,
-  Image as ImageIcon,
+  FileImage,
   Plus,
   Keyboard,
   LayoutGrid,
@@ -37,8 +37,7 @@ import { useDiagramStore, useUIStore } from '@/store';
 import {
   exportDiagramAsJSON,
   importDiagramFromJSON,
-  exportAsPNG,
-  exportAsSVG,
+  exportAsDocPNG,
   downloadFile,
 } from '@/utils/export';
 import { generateSQL } from '@/utils/sql-generator';
@@ -81,24 +80,12 @@ export function Toolbar() {
     setSqlOpen(true);
   };
 
-  const handleExportPNG = async () => {
+  const handleExportDocPNG = async () => {
     const diagram = getActiveDiagram();
     if (!diagram) return;
     try {
-      await exportAsPNG(diagram.name);
-      toast.success('Exported as PNG');
-    } catch (e) {
-      console.error(e);
-      toast.error('Could not export image');
-    }
-  };
-
-  const handleExportSVG = async () => {
-    const diagram = getActiveDiagram();
-    if (!diagram) return;
-    try {
-      await exportAsSVG(diagram.name);
-      toast.success('Exported as SVG');
+      await exportAsDocPNG(diagram.name);
+      toast.success('Documentation PNG exported');
     } catch (e) {
       console.error(e);
       toast.error('Could not export image');
@@ -232,13 +219,9 @@ export function Toolbar() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuLabel>Image</DropdownMenuLabel>
-            <DropdownMenuItem onClick={handleExportPNG}>
-              <ImageIcon className="w-3.5 h-3.5" />
+            <DropdownMenuItem onClick={handleExportDocPNG}>
+              <FileImage className="w-3.5 h-3.5" />
               PNG image
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleExportSVG}>
-              <ImageIcon className="w-3.5 h-3.5" />
-              SVG vector
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

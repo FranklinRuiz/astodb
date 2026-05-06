@@ -122,16 +122,15 @@ function ColumnRow({ column }: { column: Column }) {
       {/* Column name */}
       <span
         className={cn(
-          'font-mono truncate',
+          'font-mono truncate text-foreground',
           column.isPrimaryKey && 'font-semibold',
-          column.isNullable ? 'text-foreground/80' : 'text-foreground',
         )}
       >
         {column.name}
       </span>
 
       {/* Data type — read only */}
-      <span className="font-mono text-[10px] text-muted-foreground truncate">{column.type}</span>
+      <span className="font-mono text-[10px] text-foreground/75 truncate">{column.type}</span>
 
       {/* Constraint badges */}
       <div className="flex items-center justify-end gap-1 text-[9px] font-mono uppercase tracking-wider">

@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid';
+import { DEFAULT_TABLE_COLOR } from '@/constants';
 import type {
   Column,
   Table,
@@ -8,7 +9,6 @@ import type {
   Diagram,
   ReferentialAction,
 } from '@/types';
-import { TABLE_COLORS } from '@/constants';
 
 export const generateId = () => nanoid(10);
 
@@ -58,7 +58,7 @@ export function createTable(name = 'new_table', existingCount = 0, schema = 'dbo
     name,
     schema,
     columns: [createIdColumn(name)],
-    color: TABLE_COLORS[existingCount % TABLE_COLORS.length],
+    color: DEFAULT_TABLE_COLOR,
   };
 }
 
@@ -125,7 +125,7 @@ export function createJunctionTable(
     id: generateId(),
     name,
     schema: leftTable.schema ?? rightTable.schema ?? 'dbo',
-    color: TABLE_COLORS[existingCount % TABLE_COLORS.length],
+    color: DEFAULT_TABLE_COLOR,
     columns: [
       { ...leftFk, isPrimaryKey: true, isNullable: false },
       { ...rightFk, isPrimaryKey: true, isNullable: false },
