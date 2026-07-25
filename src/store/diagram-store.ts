@@ -32,10 +32,20 @@ import {
 import { validateDiagram } from '@/utils/validation';
 import { STORAGE_KEY, NODE_DEFAULT_WIDTH } from '@/constants';
 
+interface HistorySnapshot {
+  diagrams: Diagram[];
+  activeDiagramId: string | null;
+}
+
 interface DiagramStore {
   diagrams: Diagram[];
   activeDiagramId: string | null;
   lastCreatedEdgeId: string | null;
+  history: { past: HistorySnapshot[]; future: HistorySnapshot[] };
+
+  undo: () => void;
+  redo: () => void;
+  moveTable: (tableId: string, dx: number, dy: number) => void;
 
   createNewDiagram: (name?: string) => void;
   clearLastCreatedEdgeId: () => void;
@@ -82,6 +92,41 @@ export const useDiagramStore = create<DiagramStore>()(
         diagrams: [initialDiagram],
         activeDiagramId: initialDiagram.id,
         lastCreatedEdgeId: null,
+        history: { past: [], future: [] },
+
+        undo: () => set((state) => {
+          const { past, future } = state.history;
+          if (past.length === 0) return state;
+          const previous = past[past.length - 1];
+          const current: HistorySnapshot = { diagrams: state.diagrams, activeDiagramId: state.activeDiagramId };
+          return {
+            diagrams: previous.diagrams,
+            activeDiagramId: previous.activeDiagramId,
+            history: { past: past.slice(0, -1), future: [current, ...future].slice(0, MAX_HISTORY) },
+          };
+        }),
+
+        redo: () => set((state) => {
+          const { past, future } = state.history;
+          if (future.length === 0) return state;
+          const next = future[0];
+          const current: HistorySnapshot = { diagrams: state.diagrams, activeDiagramId: state.activeDiagramId };
+          return {
+            diagrams: next.diagrams,
+            activeDiagramId: next.activeDiagramId,
+            history: { past: [...past, current].slice(-MAX_HISTORY), future: future.slice(1) },
+          };
+        }),
+
+        moveTable: (tableId, dx, dy) => {
+          set((state) => ({
+            ...pushHistory(state, `moveTable:${tableId}`),
+            ...updateActive(state, (d) => ({
+              ...d,
+              nodes: d.nodes.map((n) => n.id === tableId ? { ...n, position: { x: n.position.x + dx, y: n.position.y + dy } } : n),
+            })),
+          }));
+        },
 
         clearLastCreatedEdgeId: () => set({ lastCreatedEdgeId: null }),
 
@@ -147,141 +192,194 @@ export const useDiagramStore = create<DiagramStore>()(
         },
 
         onNodesChange: (changes) => {
-          set((state) => updateActive(state, (d) => ({
-            ...d,
-            nodes: applyNodeChanges(changes, d.nodes),
-          })));
+          set((state) => {
+            const dragStart = changes.some((c) => c.type === 'position' && c.dragging === true);
+            const dragEnd = changes.some((c) => c.type === 'position' && c.dragging === false);
+            const removing = changes.some((c) => c.type === 'remove');
+            let historyPatch: Partial<DiagramStore> = {};
+            if (removing) {
+              historyPatch = pushHistory(state, null);
+            } else if (dragStart && !dragHistorySnapshotted) {
+              dragHistorySnapshotted = true;
+              historyPatch = pushHistory(state, null);
+            }
+            if (dragEnd) dragHistorySnapshotted = false;
+            return {
+              ...historyPatch,
+              ...updateActive(state, (d) => ({
+                ...d,
+                nodes: applyNodeChanges(changes, d.nodes),
+              })),
+            };
+          });
         },
 
         onEdgesChange: (changes) => {
-          set((state) => updateActive(state, (d) => ({
-            ...d,
-            edges: applyEdgeChanges(changes, d.edges),
-          })));
+          set((state) => {
+            const removing = changes.some((c) => c.type === 'remove');
+            return {
+              ...(removing ? pushHistory(state, null) : {}),
+              ...updateActive(state, (d) => ({
+                ...d,
+                edges: applyEdgeChanges(changes, d.edges),
+              })),
+            };
+          });
         },
 
         onConnect: (connection) => {
           if (!connection.source || !connection.target) return;
           set((state) => {
+            const historyPatch = pushHistory(state, null);
             const updated = updateActive(state, (d) => createRelationshipFromConnection(d, connection));
-            if (!updated.diagrams) return updated;
+            if (!updated.diagrams) return { ...historyPatch, ...updated };
             const active = updated.diagrams.find((d) => d.id === state.activeDiagramId);
             const lastEdge = active?.edges[active.edges.length - 1];
-            return { ...updated, lastCreatedEdgeId: lastEdge?.id ?? null };
+            return { ...historyPatch, ...updated, lastCreatedEdgeId: lastEdge?.id ?? null };
           });
         },
 
         addTable: (position, name) => {
-          set((state) => updateActive(state, (d) => {
-            const table = createTable(name ?? `table_${d.nodes.length + 1}`, d.nodes.length);
-            const node = createTableNode(table, snap(position ?? randomPosition(), d.settings.gridSize));
-            return { ...d, nodes: [...d.nodes, node] };
+          set((state) => ({
+            ...pushHistory(state, null),
+            ...updateActive(state, (d) => {
+              const table = createTable(name ?? `table_${d.nodes.length + 1}`, d.nodes.length);
+              const node = createTableNode(table, snap(position ?? randomPosition(), d.settings.gridSize));
+              return { ...d, nodes: [...d.nodes, node] };
+            }),
           }));
         },
 
         updateTable: (tableId, updates) => {
-          set((state) => updateActive(state, (d) => ({
-            ...d,
-            nodes: d.nodes.map((n) =>
-              n.id === tableId
-                ? { ...n, data: { ...n.data, table: { ...n.data.table, ...updates } } }
-                : n
-            ),
-          })));
+          set((state) => ({
+            ...pushHistory(state, `updateTable:${tableId}`),
+            ...updateActive(state, (d) => ({
+              ...d,
+              nodes: d.nodes.map((n) =>
+                n.id === tableId
+                  ? { ...n, data: { ...n.data, table: { ...n.data.table, ...updates } } }
+                  : n
+              ),
+            })),
+          }));
         },
 
         deleteTable: (tableId) => {
-          set((state) => updateActive(state, (d) => ({
-            ...d,
-            nodes: d.nodes.filter((n) => n.id !== tableId),
-            edges: d.edges.filter((e) => e.source !== tableId && e.target !== tableId),
-          })));
+          set((state) => ({
+            ...pushHistory(state, null),
+            ...updateActive(state, (d) => ({
+              ...d,
+              nodes: d.nodes.filter((n) => n.id !== tableId),
+              edges: d.edges.filter((e) => e.source !== tableId && e.target !== tableId),
+            })),
+          }));
         },
 
         duplicateTable: (tableId) => {
-          set((state) => updateActive(state, (d) => {
-            const node = d.nodes.find((n) => n.id === tableId);
-            if (!node) return d;
-            const newTable = createTable(`${node.data.table.name}_copy`, d.nodes.length, node.data.table.schema);
-            newTable.color = node.data.table.color;
-            newTable.columns = node.data.table.columns.map((c) => ({ ...createColumn(), ...c, id: createColumn().id }));
-            const newNode = createTableNode(newTable, {
-              x: node.position.x + 48,
-              y: node.position.y + 48,
-            });
-            return { ...d, nodes: [...d.nodes, newNode] };
+          set((state) => ({
+            ...pushHistory(state, null),
+            ...updateActive(state, (d) => {
+              const node = d.nodes.find((n) => n.id === tableId);
+              if (!node) return d;
+              const newTable = createTable(`${node.data.table.name}_copy`, d.nodes.length, node.data.table.schema);
+              newTable.color = node.data.table.color;
+              newTable.columns = node.data.table.columns.map((c) => ({ ...createColumn(), ...c, id: createColumn().id }));
+              const newNode = createTableNode(newTable, {
+                x: node.position.x + 48,
+                y: node.position.y + 48,
+              });
+              return { ...d, nodes: [...d.nodes, newNode] };
+            }),
           }));
         },
 
         addColumn: (tableId) => {
-          set((state) => updateActive(state, (d) => ({
-            ...d,
-            nodes: d.nodes.map((n) =>
-              n.id === tableId
-                ? { ...n, data: { ...n.data, table: { ...n.data.table, columns: [...n.data.table.columns, createColumn()] } } }
-                : n
-            ),
-          })));
+          set((state) => ({
+            ...pushHistory(state, null),
+            ...updateActive(state, (d) => ({
+              ...d,
+              nodes: d.nodes.map((n) =>
+                n.id === tableId
+                  ? { ...n, data: { ...n.data, table: { ...n.data.table, columns: [...n.data.table.columns, createColumn()] } } }
+                  : n
+              ),
+            })),
+          }));
         },
 
         updateColumn: (tableId, columnId, updates) => {
-          set((state) => updateActive(state, (d) => ({
-            ...d,
-            nodes: d.nodes.map((n) =>
-              n.id === tableId
-                ? {
-                    ...n,
-                    data: {
-                      ...n.data,
-                      table: {
-                        ...n.data.table,
-                        columns: n.data.table.columns.map((c) =>
-                          c.id === columnId
-                            ? normalizeColumn({ ...c, ...updates })
-                            : c
-                        ),
+          set((state) => ({
+            ...pushHistory(state, `updateColumn:${columnId}`),
+            ...updateActive(state, (d) => ({
+              ...d,
+              nodes: d.nodes.map((n) =>
+                n.id === tableId
+                  ? {
+                      ...n,
+                      data: {
+                        ...n.data,
+                        table: {
+                          ...n.data.table,
+                          columns: n.data.table.columns.map((c) =>
+                            c.id === columnId
+                              ? normalizeColumn({ ...c, ...updates })
+                              : c
+                          ),
+                        },
                       },
-                    },
-                  }
-                : n
-            ),
-          })));
+                    }
+                  : n
+              ),
+            })),
+          }));
         },
 
         deleteColumn: (tableId, columnId) => {
-          set((state) => updateActive(state, (d) => ({
-            ...d,
-            nodes: d.nodes.map((n) =>
-              n.id === tableId
-                ? { ...n, data: { ...n.data, table: { ...n.data.table, columns: n.data.table.columns.filter((c) => c.id !== columnId) } } }
-                : n
-            ),
-            edges: d.edges.filter((e) => e.data?.sourceColumnId !== columnId && e.data?.targetColumnId !== columnId),
-          })));
+          set((state) => ({
+            ...pushHistory(state, null),
+            ...updateActive(state, (d) => ({
+              ...d,
+              nodes: d.nodes.map((n) =>
+                n.id === tableId
+                  ? { ...n, data: { ...n.data, table: { ...n.data.table, columns: n.data.table.columns.filter((c) => c.id !== columnId) } } }
+                  : n
+              ),
+              edges: d.edges.filter((e) => e.data?.sourceColumnId !== columnId && e.data?.targetColumnId !== columnId),
+            })),
+          }));
         },
 
         reorderColumns: (tableId, fromIndex, toIndex) => {
-          set((state) => updateActive(state, (d) => ({
-            ...d,
-            nodes: d.nodes.map((n) => {
-              if (n.id !== tableId) return n;
-              const columns = [...n.data.table.columns];
-              const [moved] = columns.splice(fromIndex, 1);
-              columns.splice(toIndex, 0, moved);
-              return { ...n, data: { ...n.data, table: { ...n.data.table, columns } } };
-            }),
-          })));
+          set((state) => ({
+            ...pushHistory(state, null),
+            ...updateActive(state, (d) => ({
+              ...d,
+              nodes: d.nodes.map((n) => {
+                if (n.id !== tableId) return n;
+                const columns = [...n.data.table.columns];
+                const [moved] = columns.splice(fromIndex, 1);
+                columns.splice(toIndex, 0, moved);
+                return { ...n, data: { ...n.data, table: { ...n.data.table, columns } } };
+              }),
+            })),
+          }));
         },
 
         createRelationshipBetweenTables: (sourceTableId, targetTableId, type = 'one-to-many') => {
-          set((state) => updateActive(state, (d) => createRelationshipBetweenTables(d, sourceTableId, targetTableId, type)));
+          set((state) => ({
+            ...pushHistory(state, null),
+            ...updateActive(state, (d) => createRelationshipBetweenTables(d, sourceTableId, targetTableId, type)),
+          }));
         },
 
         updateRelation: (edgeId, updates) => {
-          set((state) => updateActive(state, (d) => ({
-            ...d,
-            edges: d.edges.map((e) => e.id === edgeId && e.data ? { ...e, data: { ...e.data, ...updates } } : e),
-          })));
+          set((state) => ({
+            ...pushHistory(state, `updateRelation:${edgeId}`),
+            ...updateActive(state, (d) => ({
+              ...d,
+              edges: d.edges.map((e) => e.id === edgeId && e.data ? { ...e, data: { ...e.data, ...updates } } : e),
+            })),
+          }));
         },
 
         updateRelationType: (edgeId, type) => {
@@ -289,44 +387,65 @@ export const useDiagramStore = create<DiagramStore>()(
             get().convertManyToManyRelation(edgeId);
             return;
           }
-          set((state) => updateActive(state, (d) => ({
-            ...d,
-            edges: d.edges.map((e) => e.id === edgeId && e.data ? { ...e, data: { ...e.data, type } } : e),
-          })));
+          set((state) => ({
+            ...pushHistory(state, null),
+            ...updateActive(state, (d) => ({
+              ...d,
+              edges: d.edges.map((e) => e.id === edgeId && e.data ? { ...e, data: { ...e.data, type } } : e),
+            })),
+          }));
         },
 
         updateRelationColumns: (edgeId, sourceColumnId, targetColumnId) => {
-          set((state) => updateActive(state, (d) => ({
-            ...d,
-            edges: d.edges.map((e) => e.id === edgeId && e.data
-              ? {
-                  ...e,
-                  sourceHandle: `${sourceColumnId}-source`,
-                  targetHandle: `${targetColumnId}-target`,
-                  data: { ...e.data, sourceColumnId, targetColumnId },
-                }
-              : e),
-          })));
+          set((state) => ({
+            ...pushHistory(state, null),
+            ...updateActive(state, (d) => ({
+              ...d,
+              edges: d.edges.map((e) => e.id === edgeId && e.data
+                ? {
+                    ...e,
+                    sourceHandle: `${sourceColumnId}-source`,
+                    targetHandle: `${targetColumnId}-target`,
+                    data: { ...e.data, sourceColumnId, targetColumnId },
+                  }
+                : e),
+            })),
+          }));
         },
 
         deleteEdge: (edgeId) => {
-          set((state) => updateActive(state, (d) => ({ ...d, edges: d.edges.filter((e) => e.id !== edgeId) })));
+          set((state) => ({
+            ...pushHistory(state, null),
+            ...updateActive(state, (d) => ({ ...d, edges: d.edges.filter((e) => e.id !== edgeId) })),
+          }));
         },
 
         convertManyToManyRelation: (edgeId) => {
-          set((state) => updateActive(state, (d) => convertEdgeToJunctionTable(d, edgeId)));
+          set((state) => ({
+            ...pushHistory(state, null),
+            ...updateActive(state, (d) => convertEdgeToJunctionTable(d, edgeId)),
+          }));
         },
 
         autoLayout: () => {
-          set((state) => updateActive(state, (d) => hierarchicalAutoLayout(d)));
+          set((state) => ({
+            ...pushHistory(state, null),
+            ...updateActive(state, (d) => hierarchicalAutoLayout(d)),
+          }));
         },
 
         alignSelected: (tableIds, alignment) => {
-          set((state) => updateActive(state, (d) => alignNodes(d, tableIds, alignment)));
+          set((state) => ({
+            ...pushHistory(state, null),
+            ...updateActive(state, (d) => alignNodes(d, tableIds, alignment)),
+          }));
         },
 
         distributeSelected: (tableIds, direction) => {
-          set((state) => updateActive(state, (d) => distributeNodes(d, tableIds, direction)));
+          set((state) => ({
+            ...pushHistory(state, null),
+            ...updateActive(state, (d) => distributeNodes(d, tableIds, direction)),
+          }));
         },
       }),
       {
@@ -341,6 +460,32 @@ export const useDiagramStore = create<DiagramStore>()(
     { name: 'DiagramStore' }
   )
 );
+
+const MAX_HISTORY = 100;
+const COALESCE_MS = 600;
+let lastActionKey: string | null = null;
+let lastActionTime = 0;
+let dragHistorySnapshotted = false;
+
+/**
+ * Snapshots pre-mutation state onto the undo stack. Repeated calls with the same
+ * non-null `key` within COALESCE_MS are merged into a single undo step — this keeps
+ * fast keystrokes in a text field (name, comment, FK label) from producing one
+ * undo entry per character.
+ */
+function pushHistory(state: DiagramStore, key: string | null): Partial<DiagramStore> {
+  const now = Date.now();
+  const coalesce = key !== null && key === lastActionKey && now - lastActionTime < COALESCE_MS;
+  lastActionKey = key;
+  lastActionTime = now;
+  if (coalesce) return {};
+  return {
+    history: {
+      past: [...state.history.past, { diagrams: state.diagrams, activeDiagramId: state.activeDiagramId }].slice(-MAX_HISTORY),
+      future: [],
+    },
+  };
+}
 
 function updateActive(state: DiagramStore, mutator: (d: Diagram) => Diagram): Partial<DiagramStore> {
   if (!state.activeDiagramId) return {};

@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { Key, Link2, Hash, Wand2, AlertTriangle, CircleAlert } from 'lucide-react';
 import type { TableNode as TableNodeType, Column } from '@/types';
@@ -9,6 +9,19 @@ function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeType>) {
   const { table, validationLevel = 'ok' } = data;
   const selectTable = useUIStore((s) => s.selectTable);
   const addColumn = useDiagramStore((s) => s.addColumn);
+  const updateTable = useDiagramStore((s) => s.updateTable);
+
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState(table.name);
+
+  useEffect(() => setNameValue(table.name), [table.name]);
+
+  const commitName = () => {
+    const trimmed = nameValue.trim();
+    if (trimmed && trimmed !== table.name) updateTable(id, { name: trimmed });
+    else setNameValue(table.name);
+    setEditingName(false);
+  };
 
   return (
     // Outer wrapper has no overflow-hidden so protruding handles are visible.
@@ -52,9 +65,29 @@ function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeType>) {
           <div className="w-1 h-6 rounded-sm flex-shrink-0" style={{ backgroundColor: table.color }} />
 
           <div className="flex-1 min-w-0">
-            <h3 className="font-mono font-semibold text-sm tracking-tight truncate">
-              <span className="font-normal text-muted-foreground">{table.schema ?? 'dbo'}.</span>{table.name}
-            </h3>
+            {editingName ? (
+              <input
+                autoFocus
+                value={nameValue}
+                onChange={(e) => setNameValue(e.target.value)}
+                onBlur={commitName}
+                onFocus={(e) => e.target.select()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitName();
+                  if (e.key === 'Escape') { setNameValue(table.name); setEditingName(false); }
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="nodrag w-full font-mono font-semibold text-sm tracking-tight bg-background border border-primary/50 rounded px-1 -mx-1 outline-none"
+              />
+            ) : (
+              <h3
+                onDoubleClick={(e) => { e.stopPropagation(); setEditingName(true); }}
+                className="font-mono font-semibold text-sm tracking-tight truncate cursor-text"
+                title="Double-click to rename"
+              >
+                <span className="font-normal text-muted-foreground">{table.schema ?? 'dbo'}.</span>{table.name}
+              </h3>
+            )}
           </div>
 
           <div className="flex items-center gap-1">
@@ -79,7 +112,7 @@ function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeType>) {
             <div className="px-3 py-4 text-xs text-muted-foreground italic text-center">No columns</div>
           ) : (
             table.columns.map((col) => (
-              <ColumnRow key={col.id} column={col} />
+              <ColumnRow key={col.id} column={col} tableId={id} />
             ))
           )}
         </div>
@@ -88,7 +121,20 @@ function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeType>) {
   );
 }
 
-function ColumnRow({ column }: { column: Column }) {
+function ColumnRow({ column, tableId }: { column: Column; tableId: string }) {
+  const updateColumn = useDiagramStore((s) => s.updateColumn);
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(column.name);
+
+  useEffect(() => setValue(column.name), [column.name]);
+
+  const commit = () => {
+    const trimmed = value.trim();
+    if (trimmed && trimmed !== column.name) updateColumn(tableId, column.id, { name: trimmed });
+    else setValue(column.name);
+    setEditing(false);
+  };
+
   return (
     <div className="relative grid grid-cols-[18px_1fr_auto_86px] items-center gap-1.5 px-3 py-1.5 text-xs hover:bg-accent/40 transition-colors group/col">
 
@@ -120,14 +166,32 @@ function ColumnRow({ column }: { column: Column }) {
       </div>
 
       {/* Column name */}
-      <span
-        className={cn(
-          'font-mono truncate text-foreground',
-          column.isPrimaryKey && 'font-semibold',
-        )}
-      >
-        {column.name}
-      </span>
+      {editing ? (
+        <input
+          autoFocus
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={commit}
+          onFocus={(e) => e.target.select()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commit();
+            if (e.key === 'Escape') { setValue(column.name); setEditing(false); }
+          }}
+          onClick={(e) => e.stopPropagation()}
+          className="nodrag w-full font-mono text-xs bg-background border border-primary/40 rounded px-1 -mx-1 outline-none"
+        />
+      ) : (
+        <span
+          onDoubleClick={(e) => { e.stopPropagation(); setEditing(true); }}
+          title="Double-click to rename"
+          className={cn(
+            'font-mono truncate text-foreground cursor-text',
+            column.isPrimaryKey && 'font-semibold',
+          )}
+        >
+          {column.name}
+        </span>
+      )}
 
       {/* Data type — read only */}
       <span className="font-mono text-[10px] text-foreground/75 truncate">{column.type}</span>

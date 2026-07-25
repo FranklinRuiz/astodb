@@ -38,9 +38,11 @@ export function Canvas() {
   const onConnect = useDiagramStore((s) => s.onConnect);
   const selectTable = useUIStore((s) => s.selectTable);
   const selectEdge = useUIStore((s) => s.selectEdge);
+  const setSelectedTableIds = useUIStore((s) => s.setSelectedTableIds);
 
   const handleSelectionChange = useCallback(
     ({ nodes, edges }: OnSelectionChangeParams) => {
+      setSelectedTableIds(nodes.map((n) => n.id));
       if (nodes.length > 0) {
         selectTable(nodes[0].id);
       } else if (edges.length > 0) {
@@ -50,13 +52,14 @@ export function Canvas() {
         selectEdge(null);
       }
     },
-    [selectTable, selectEdge]
+    [selectTable, selectEdge, setSelectedTableIds]
   );
 
   const handlePaneClick = useCallback(() => {
     selectTable(null);
     selectEdge(null);
-  }, [selectTable, selectEdge]);
+    setSelectedTableIds([]);
+  }, [selectTable, selectEdge, setSelectedTableIds]);
 
   const nodes = useMemo(() => {
     if (!activeDiagram) return [];

@@ -5,6 +5,7 @@ import { Sidebar } from '@/components/Sidebar/Sidebar';
 import { Toolbar } from '@/components/Toolbar/Toolbar';
 import { Canvas } from '@/components/Canvas/Canvas';
 import { PropertiesPanel } from '@/components/Properties/PropertiesPanel';
+import { CommandPalette } from '@/components/CommandPalette/CommandPalette';
 import { useTheme } from '@/hooks/use-theme';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 
@@ -27,6 +28,7 @@ function App() {
             <PropertiesPanel />
           </div>
         </div>
+        <CommandPalette />
         <Toaster
           theme={theme}
           position="bottom-center"

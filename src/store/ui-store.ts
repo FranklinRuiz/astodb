@@ -8,13 +8,17 @@ interface UIStore {
   theme: Theme;
   selectedTableId: string | null;
   selectedEdgeId: string | null;
+  selectedTableIds: string[];
   isPropertiesOpen: boolean;
+  isCommandPaletteOpen: boolean;
 
   toggleTheme: () => void;
   setTheme: (theme: Theme) => void;
   selectTable: (id: string | null) => void;
   selectEdge: (id: string | null) => void;
+  setSelectedTableIds: (ids: string[]) => void;
   setPropertiesOpen: (open: boolean) => void;
+  setCommandPaletteOpen: (open: boolean) => void;
 }
 
 export const useUIStore = create<UIStore>()(
@@ -23,7 +27,9 @@ export const useUIStore = create<UIStore>()(
       theme: 'light',
       selectedTableId: null,
       selectedEdgeId: null,
+      selectedTableIds: [],
       isPropertiesOpen: true,
+      isCommandPaletteOpen: false,
 
       toggleTheme: () =>
         set((s) => ({ theme: s.theme === 'light' ? 'dark' : 'light' })),
@@ -32,7 +38,9 @@ export const useUIStore = create<UIStore>()(
         set({ selectedTableId: id, selectedEdgeId: null, isPropertiesOpen: id !== null }),
       selectEdge: (id) =>
         set({ selectedEdgeId: id, selectedTableId: null, isPropertiesOpen: id !== null }),
+      setSelectedTableIds: (ids) => set({ selectedTableIds: ids }),
       setPropertiesOpen: (open) => set({ isPropertiesOpen: open }),
+      setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
     }),
     {
       name: THEME_KEY,

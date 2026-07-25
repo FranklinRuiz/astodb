@@ -54,9 +54,13 @@ export function Sidebar() {
   const relations = activeDiagram?.edges ?? [];
   const issues = useMemo(() => activeDiagram ? validateDiagram(activeDiagram) : [], [activeDiagram]);
 
-  const filteredTables = tables.filter((t) =>
-    `${t.schema ?? ''}.${t.name}`.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredTables = tables.filter((t) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    const tableMatch = `${t.schema ?? ''}.${t.name}`.toLowerCase().includes(q);
+    const columnMatch = t.columns.some((c) => c.name.toLowerCase().includes(q));
+    return tableMatch || columnMatch;
+  });
 
   const groupedTables = useMemo(() => {
     return filteredTables.reduce<Record<string, typeof filteredTables>>((acc, table) => {
@@ -164,7 +168,7 @@ export function Sidebar() {
       <div className="px-3 pb-2">
         <div className="relative">
           <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search tables, schemas..." className="h-7 pl-8 text-xs" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search tables, columns..." className="h-7 pl-8 text-xs" />
         </div>
       </div>
 
@@ -192,6 +196,10 @@ export function Sidebar() {
                     const tableIssues = issues.filter((i) => i.tableId === table.id);
                     const hasError = tableIssues.some((i) => i.severity === 'error');
                     const hasWarning = tableIssues.some((i) => i.severity === 'warning');
+                    const searchQuery = search.trim().toLowerCase();
+                    const matchedColumns = searchQuery
+                      ? table.columns.filter((c) => c.name.toLowerCase().includes(searchQuery))
+                      : [];
                     return (
                       <div
                         key={table.id}
@@ -202,10 +210,11 @@ export function Sidebar() {
                           if (e.key === 'Enter' || e.key === ' ') { selectTable(table.id); setPropertiesOpen(true); }
                         }}
                         className={cn(
-                          'w-full text-left px-2 py-1.5 rounded-md flex items-center gap-2 text-sm transition-colors group cursor-pointer',
+                          'w-full text-left px-2 py-1.5 rounded-md flex flex-col gap-1 text-sm transition-colors group cursor-pointer',
                           selectedTableId === table.id ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/50'
                         )}
                       >
+                      <div className="flex items-center gap-2">
                         <div className="w-1 h-3.5 rounded-sm flex-shrink-0" style={{ backgroundColor: table.color }} />
                         <span className="font-mono text-xs truncate flex-1">
                           {table.schema ? `${table.schema}.` : ''}{table.name}
@@ -239,6 +248,16 @@ export function Sidebar() {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
+                      </div>
+                      {matchedColumns.length > 0 && (
+                        <div className="pl-3 flex flex-wrap gap-1">
+                          {matchedColumns.slice(0, 6).map((c) => (
+                            <span key={c.id} className="text-[9px] font-mono px-1 rounded bg-primary/10 text-primary">
+                              {c.name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       </div>
                     );
                   })}
