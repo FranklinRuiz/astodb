@@ -1,15 +1,19 @@
 import { memo, useEffect, useState } from 'react';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { Handle, Position, useStore, type NodeProps } from '@xyflow/react';
 import { Key, Link2, Hash, Wand2, AlertTriangle, CircleAlert } from 'lucide-react';
 import type { TableNode as TableNodeType, Column } from '@/types';
 import { useDiagramStore, useUIStore } from '@/store';
 import { cn } from '@/lib/utils';
 
+/** Below this zoom level, per-column type/badges hide (unreadable anyway) so the overview stays uncluttered. */
+const COMPACT_ZOOM_THRESHOLD = 0.45;
+
 function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeType>) {
-  const { table, validationLevel = 'ok' } = data;
+  const { table, validationLevel = 'ok', dimmed = false } = data;
   const selectTable = useUIStore((s) => s.selectTable);
   const addColumn = useDiagramStore((s) => s.addColumn);
   const updateTable = useDiagramStore((s) => s.updateTable);
+  const isCompact = useStore((s) => s.transform[2] < COMPACT_ZOOM_THRESHOLD);
 
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(table.name);
@@ -26,7 +30,12 @@ function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeType>) {
   return (
     // Outer wrapper has no overflow-hidden so protruding handles are visible.
     // All visual card styling (border, bg, rounded) lives on the inner div.
-    <div className="group relative min-w-[340px] max-w-[480px]">
+    <div
+      className={cn(
+        'group relative min-w-[340px] max-w-[480px] transition-opacity duration-150',
+        dimmed && 'opacity-25 hover:opacity-100'
+      )}
+    >
 
       {/* Header-level quick-connect handle.
           right-0 keeps it within the outer wrapper (no overflow issue).
@@ -106,13 +115,15 @@ function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeType>) {
           </div>
         </div>
 
-        {/* ── Column rows ── */}
+        {/* ── Column rows ──
+             At low zoom, types/badges hide to cut visual noise (unreadable at that scale anyway)
+             while the row grid + handles keep their layout so edge anchors don't shift. */}
         <div className="divide-y divide-border/40">
           {table.columns.length === 0 ? (
             <div className="px-3 py-4 text-xs text-muted-foreground italic text-center">No columns</div>
           ) : (
             table.columns.map((col) => (
-              <ColumnRow key={col.id} column={col} tableId={id} />
+              <ColumnRow key={col.id} column={col} tableId={id} compact={isCompact} />
             ))
           )}
         </div>
@@ -121,7 +132,7 @@ function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeType>) {
   );
 }
 
-function ColumnRow({ column, tableId }: { column: Column; tableId: string }) {
+function ColumnRow({ column, tableId, compact }: { column: Column; tableId: string; compact: boolean }) {
   const updateColumn = useDiagramStore((s) => s.updateColumn);
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(column.name);
@@ -193,11 +204,13 @@ function ColumnRow({ column, tableId }: { column: Column; tableId: string }) {
         </span>
       )}
 
-      {/* Data type — read only */}
-      <span className="font-mono text-[10px] text-foreground/75 truncate">{column.type}</span>
+      {/* Data type — read only, hidden when zoomed far out (unreadable + adds noise) */}
+      <span className={cn('font-mono text-[10px] text-foreground/85 truncate', compact && 'invisible')}>
+        {column.type}
+      </span>
 
       {/* Constraint badges */}
-      <div className="flex items-center justify-end gap-1 text-[9px] font-mono uppercase tracking-wider">
+      <div className={cn('flex items-center justify-end gap-1 text-[9px] font-mono uppercase tracking-wider', compact && 'invisible')}>
         {column.isPrimaryKey && <Badge tone="pk">PK</Badge>}
         {!column.isNullable && <Badge tone="nn">NN</Badge>}
         {column.isAutoIncrement && <Badge tone="ai">AI</Badge>}

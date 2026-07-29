@@ -12,6 +12,8 @@ import {
   CircleAlert,
   CheckCircle2,
   Pencil,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { Button } from '@/components/UI/button';
 import { Input } from '@/components/UI/input';
@@ -22,10 +24,12 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from '@/components/UI/dropdown-menu';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/UI/tooltip';
 import { useDiagramStore, useUIStore } from '@/store';
 import { cn } from '@/lib/utils';
 import { APP_NAME, APP_TAGLINE } from '@/constants';
 import { validateDiagram } from '@/utils/validation';
+import type { Table } from '@/types';
 
 export function Sidebar() {
   const [search, setSearch] = useState('');
@@ -46,6 +50,9 @@ export function Sidebar() {
   const selectedTableId = useUIStore((s) => s.selectedTableId);
   const selectTable = useUIStore((s) => s.selectTable);
   const setPropertiesOpen = useUIStore((s) => s.setPropertiesOpen);
+  const isCollapsed = useUIStore((s) => s.isSidebarCollapsed);
+  const toggleSidebar = useUIStore((s) => s.toggleSidebar);
+  const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen);
 
   const [editingDiagramName, setEditingDiagramName] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -82,17 +89,102 @@ export function Sidebar() {
     setEditingDiagramName(false);
   };
 
+  if (isCollapsed) {
+    return (
+      <aside className="w-14 border-r border-border bg-card flex flex-col items-center h-full">
+        {/* h-12 matches the toolbar so the border line runs flush across both */}
+        <div className="h-12 w-full border-b border-border flex items-center justify-center gap-1 flex-shrink-0">
+          <div className="w-7 h-7 rounded-md bg-foreground text-background flex items-center justify-center flex-shrink-0">
+            <Database className="w-4 h-4" />
+          </div>
+        </div>
+
+        <div className="flex-1 w-full min-h-0 flex flex-col items-center gap-1.5 py-3">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggleSidebar}>
+                <PanelLeftOpen className="w-3.5 h-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Expand sidebar</TooltipContent>
+          </Tooltip>
+
+          <div className="w-6 border-t border-border my-1" />
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => addTable()}>
+                <Plus className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">New table (Ctrl/Cmd + N)</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCommandPaletteOpen(true)}>
+                <Search className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Search tables & columns</TooltipContent>
+          </Tooltip>
+
+          <div className="w-6 border-t border-border my-1" />
+
+          <div className="flex-1 w-full min-h-0 overflow-y-auto flex flex-col items-center gap-1.5 px-1.5">
+            {tables.map((table) => (
+              <TableChip
+                key={table.id}
+                table={table}
+                isSelected={selectedTableId === table.id}
+                hasError={issues.some((i) => i.tableId === table.id && i.severity === 'error')}
+                hasWarning={issues.some((i) => i.tableId === table.id && i.severity === 'warning')}
+                onSelect={() => { selectTable(table.id); setPropertiesOpen(true); }}
+              />
+            ))}
+          </div>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => { selectTable(null); setPropertiesOpen(true); }}
+                className="relative w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 hover:bg-accent transition-colors"
+              >
+                {issues.length === 0 ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                ) : issues.some((i) => i.severity === 'error') ? (
+                  <CircleAlert className="w-4 h-4 text-destructive" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 text-amber-500" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Model validation · {issues.length} issue{issues.length === 1 ? '' : 's'}</TooltipContent>
+          </Tooltip>
+        </div>
+      </aside>
+    );
+  }
+
   return (
     <aside className="w-72 border-r border-border bg-card flex flex-col h-full">
-      {/* App header */}
-      <div className="px-4 py-3.5 border-b border-border flex items-center gap-2.5">
-        <div className="w-7 h-7 rounded-md bg-foreground text-background flex items-center justify-center">
+      {/* App header — h-12 matches the toolbar so the border line runs flush across both */}
+      <div className="h-12 px-4 border-b border-border flex items-center gap-2.5 flex-shrink-0">
+        <div className="w-7 h-7 rounded-md bg-foreground text-background flex items-center justify-center flex-shrink-0">
           <Database className="w-4 h-4" />
         </div>
-        <div className="min-w-0">
-          <h1 className="font-semibold text-sm tracking-tight">{APP_NAME}</h1>
+        <div className="min-w-0 flex-1 leading-tight">
+          <h1 className="font-semibold text-sm tracking-tight truncate">{APP_NAME}</h1>
           <p className="text-[10px] text-muted-foreground truncate">{APP_TAGLINE}</p>
         </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={toggleSidebar}>
+              <PanelLeftClose className="w-3.5 h-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">Collapse sidebar</TooltipContent>
+        </Tooltip>
       </div>
 
       {/* Diagram name row */}
@@ -300,5 +392,47 @@ export function Sidebar() {
         </div>
       </div>
     </aside>
+  );
+}
+
+function TableChip({
+  table,
+  isSelected,
+  hasError,
+  hasWarning,
+  onSelect,
+}: {
+  table: Table;
+  isSelected: boolean;
+  hasError: boolean;
+  hasWarning: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          onClick={onSelect}
+          className={cn(
+            'relative w-8 h-8 rounded-md flex items-center justify-center text-[10px] font-mono font-semibold uppercase flex-shrink-0 transition-all',
+            isSelected ? 'ring-2 ring-primary' : 'ring-1 ring-transparent hover:ring-border'
+          )}
+          style={{ backgroundColor: `${table.color ?? '#94a3b8'}26`, color: table.color ?? '#94a3b8' }}
+        >
+          {table.name.slice(0, 2)}
+          {(hasError || hasWarning) && (
+            <span
+              className={cn(
+                'absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-card',
+                hasError ? 'bg-destructive' : 'bg-amber-500'
+              )}
+            />
+          )}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="right">
+        {table.schema ? `${table.schema}.` : ''}{table.name} · {table.columns.length} cols
+      </TooltipContent>
+    </Tooltip>
   );
 }

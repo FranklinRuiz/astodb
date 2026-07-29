@@ -9,16 +9,21 @@ interface UIStore {
   selectedTableId: string | null;
   selectedEdgeId: string | null;
   selectedTableIds: string[];
+  hoveredTableId: string | null;
   isPropertiesOpen: boolean;
   isCommandPaletteOpen: boolean;
+  isSidebarCollapsed: boolean;
 
   toggleTheme: () => void;
   setTheme: (theme: Theme) => void;
   selectTable: (id: string | null) => void;
   selectEdge: (id: string | null) => void;
   setSelectedTableIds: (ids: string[]) => void;
+  setHoveredTableId: (id: string | null) => void;
   setPropertiesOpen: (open: boolean) => void;
   setCommandPaletteOpen: (open: boolean) => void;
+  setSidebarCollapsed: (collapsed: boolean) => void;
+  toggleSidebar: () => void;
 }
 
 export const useUIStore = create<UIStore>()(
@@ -28,8 +33,10 @@ export const useUIStore = create<UIStore>()(
       selectedTableId: null,
       selectedEdgeId: null,
       selectedTableIds: [],
+      hoveredTableId: null,
       isPropertiesOpen: true,
       isCommandPaletteOpen: false,
+      isSidebarCollapsed: false,
 
       toggleTheme: () =>
         set((s) => ({ theme: s.theme === 'light' ? 'dark' : 'light' })),
@@ -39,8 +46,11 @@ export const useUIStore = create<UIStore>()(
       selectEdge: (id) =>
         set({ selectedEdgeId: id, selectedTableId: null, isPropertiesOpen: id !== null }),
       setSelectedTableIds: (ids) => set({ selectedTableIds: ids }),
+      setHoveredTableId: (id) => set({ hoveredTableId: id }),
       setPropertiesOpen: (open) => set({ isPropertiesOpen: open }),
       setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
+      setSidebarCollapsed: (collapsed) => set({ isSidebarCollapsed: collapsed }),
+      toggleSidebar: () => set((s) => ({ isSidebarCollapsed: !s.isSidebarCollapsed })),
     }),
     {
       name: THEME_KEY,

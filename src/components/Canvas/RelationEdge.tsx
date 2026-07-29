@@ -41,9 +41,15 @@ function RelationEdgeComponent({
   // For those, duplicate the path inside EdgeLabelRenderer which renders above nodes.
   const isLongEdge = targetX - sourceX > 640;
 
-  const edgeStroke = selected ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))';
-  const edgeStrokeWidth = selected ? 2.25 : 1.5;
+  const dimmed = data?.dimmed ?? false;
+  const highlighted = data?.highlighted ?? false;
+  // "Active" = selected, or connected to the table currently hovered/selected elsewhere on the canvas.
+  const isActive = selected || highlighted;
+
+  const edgeStroke = isActive ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))';
+  const edgeStrokeWidth = selected ? 2.25 : highlighted ? 2 : 1.5;
   const edgeDash = data?.isIdentifying ? undefined : '6 4';
+  const edgeOpacity = dimmed ? 0.12 : 1;
 
   return (
     <>
@@ -54,6 +60,8 @@ function RelationEdgeComponent({
           stroke: edgeStroke,
           strokeWidth: edgeStrokeWidth,
           strokeDasharray: edgeDash,
+          opacity: edgeOpacity,
+          transition: 'opacity 150ms ease, stroke 150ms ease',
         }}
       />
 
@@ -68,6 +76,7 @@ function RelationEdgeComponent({
               height: 1,
               overflow: 'visible',
               pointerEvents: 'none',
+              opacity: edgeOpacity,
             }}
           >
             <path
@@ -90,6 +99,7 @@ function RelationEdgeComponent({
             height: 1,
             overflow: 'visible',
             pointerEvents: 'none',
+            opacity: edgeOpacity,
           }}
         >
           <CardinalityMarker
@@ -108,8 +118,12 @@ function RelationEdgeComponent({
           />
         </svg>
         <div
-          style={{ transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)` }}
-          className="absolute pointer-events-auto flex items-center gap-1"
+          style={{
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+            opacity: edgeOpacity,
+            transition: 'opacity 150ms ease',
+          }}
+          className="absolute pointer-events-auto flex items-center gap-1 group/label"
           onClick={(e) => {
             e.stopPropagation();
             selectEdge(id);
@@ -126,11 +140,15 @@ function RelationEdgeComponent({
                 ? 'bg-primary text-primary-foreground border-primary shadow-md'
                 : 'bg-card text-muted-foreground border-border hover:border-foreground/40 hover:text-foreground'
             )}
-            title="Click to edit relation properties"
+            title={label}
           >
             <Link2 className="w-3 h-3 flex-shrink-0" />
             <span className="font-semibold">{cardinality.label}</span>
-            {data?.showLabel !== false && <span>· {label}</span>}
+            {/* FK name hides until the relation is active — keeps the canvas from turning into
+                a wall of overlapping labels when many relations are visible at once. */}
+            {data?.showLabel !== false && (
+              <span className={cn(isActive ? 'inline' : 'hidden', 'group-hover/label:inline')}>· {label}</span>
+            )}
           </button>
           {selected && (
             <button

@@ -16,6 +16,7 @@ export function useKeyboardShortcuts() {
   const selectedEdgeId = useUIStore((s) => s.selectedEdgeId);
   const selectTable = useUIStore((s) => s.selectTable);
   const selectEdge = useUIStore((s) => s.selectEdge);
+  const toggleSidebar = useUIStore((s) => s.toggleSidebar);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -47,6 +48,13 @@ export function useKeyboardShortcuts() {
       if (mod && e.key.toLowerCase() === 'y') {
         e.preventDefault();
         redo();
+        return;
+      }
+
+      // Cmd/Ctrl + B: Toggle sidebar
+      if (mod && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleSidebar();
         return;
       }
 
@@ -94,5 +102,5 @@ export function useKeyboardShortcuts() {
 
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [addTable, deleteTable, deleteEdge, duplicateTable, moveTable, undo, redo, selectedTableId, selectedEdgeId, selectTable, selectEdge]);
+  }, [addTable, deleteTable, deleteEdge, duplicateTable, moveTable, undo, redo, selectedTableId, selectedEdgeId, selectTable, selectEdge, toggleSidebar]);
 }

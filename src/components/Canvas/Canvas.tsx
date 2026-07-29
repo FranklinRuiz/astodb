@@ -5,6 +5,7 @@ import {
   BackgroundVariant,
   Controls,
   MiniMap,
+  type Node,
   type NodeTypes,
   type EdgeTypes,
   type OnSelectionChangeParams,
@@ -16,6 +17,7 @@ import '@xyflow/react/dist/style.css';
 import { TableNode } from './TableNode';
 import { RelationEdge } from './RelationEdge';
 import { useDiagramStore, useUIStore } from '@/store';
+import type { RelationEdge as RelationEdgeType } from '@/types';
 import { DEFAULT_VIEWPORT } from '@/constants';
 import { useTheme } from '@/hooks/use-theme';
 import { getTableValidationLevel } from '@/utils/validation';
@@ -39,6 +41,10 @@ export function Canvas() {
   const selectTable = useUIStore((s) => s.selectTable);
   const selectEdge = useUIStore((s) => s.selectEdge);
   const setSelectedTableIds = useUIStore((s) => s.setSelectedTableIds);
+  const selectedTableId = useUIStore((s) => s.selectedTableId);
+  const selectedTableIds = useUIStore((s) => s.selectedTableIds);
+  const hoveredTableId = useUIStore((s) => s.hoveredTableId);
+  const setHoveredTableId = useUIStore((s) => s.setHoveredTableId);
 
   const handleSelectionChange = useCallback(
     ({ nodes, edges }: OnSelectionChangeParams) => {
@@ -61,6 +67,32 @@ export function Canvas() {
     setSelectedTableIds([]);
   }, [selectTable, selectEdge, setSelectedTableIds]);
 
+  const handleNodeMouseEnter = useCallback(
+    (_: React.MouseEvent, node: Node) => setHoveredTableId(node.id),
+    [setHoveredTableId]
+  );
+  const handleNodeMouseLeave = useCallback(() => setHoveredTableId(null), [setHoveredTableId]);
+
+  // Focus id: whatever the user is currently hovering, falling back to a single selected table.
+  const focusTableId =
+    hoveredTableId ?? (selectedTableIds.length <= 1 ? selectedTableId : null);
+
+  const rawEdges = activeDiagram?.edges ?? [];
+
+  const { connectedNodeIds, connectedEdgeIds } = useMemo(() => {
+    if (!focusTableId) return { connectedNodeIds: null, connectedEdgeIds: null };
+    const nodeIds = new Set<string>([focusTableId]);
+    const edgeIds = new Set<string>();
+    for (const edge of rawEdges) {
+      if (edge.source === focusTableId || edge.target === focusTableId) {
+        edgeIds.add(edge.id);
+        nodeIds.add(edge.source);
+        nodeIds.add(edge.target);
+      }
+    }
+    return { connectedNodeIds: nodeIds, connectedEdgeIds: edgeIds };
+  }, [focusTableId, rawEdges]);
+
   const nodes = useMemo(() => {
     if (!activeDiagram) return [];
     return activeDiagram.nodes.map((node) => ({
@@ -68,11 +100,22 @@ export function Canvas() {
       data: {
         ...node.data,
         validationLevel: getTableValidationLevel(activeDiagram, node.id),
+        dimmed: connectedNodeIds ? !connectedNodeIds.has(node.id) : false,
       },
     }));
-  }, [activeDiagram]);
+  }, [activeDiagram, connectedNodeIds]);
 
-  const edges = useMemo(() => activeDiagram?.edges ?? [], [activeDiagram]);
+  const edges = useMemo((): RelationEdgeType[] => {
+    return rawEdges.map((edge) => ({
+      ...edge,
+      data: {
+        ...edge.data,
+        dimmed: connectedEdgeIds ? !connectedEdgeIds.has(edge.id) : false,
+        highlighted: connectedEdgeIds ? connectedEdgeIds.has(edge.id) && !!focusTableId : false,
+      } as RelationEdgeType['data'],
+    }));
+  }, [rawEdges, connectedEdgeIds, focusTableId]);
+
   const settings = activeDiagram?.settings;
 
   return (
@@ -87,6 +130,8 @@ export function Canvas() {
         onConnect={onConnect}
         onSelectionChange={handleSelectionChange}
         onPaneClick={handlePaneClick}
+        onNodeMouseEnter={handleNodeMouseEnter}
+        onNodeMouseLeave={handleNodeMouseLeave}
         defaultViewport={DEFAULT_VIEWPORT}
         connectionLineType={ConnectionLineType.SmoothStep}
         connectionRadius={48}

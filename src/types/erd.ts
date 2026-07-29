@@ -111,6 +111,7 @@ export interface Table {
 export type TableNode = Node<{
   table: Table;
   validationLevel?: 'error' | 'warning' | 'ok';
+  dimmed?: boolean;
 }, 'tableNode'>;
 
 export interface RelationData extends Record<string, unknown> {
@@ -124,6 +125,8 @@ export interface RelationData extends Record<string, unknown> {
   showLabel?: boolean;
   showColumns?: boolean;
   isIdentifying?: boolean;
+  dimmed?: boolean;
+  highlighted?: boolean;
 }
 
 export type RelationEdge = Edge<RelationData, 'relationEdge'>;
