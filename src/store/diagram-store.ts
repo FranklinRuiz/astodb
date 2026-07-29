@@ -15,8 +15,6 @@ import type {
   Table,
   Column,
   RelationType,
-  Alignment,
-  Distribution,
   ReferentialAction,
   ValidationIssue,
 } from '@/types';
@@ -79,8 +77,6 @@ interface DiagramStore {
   convertManyToManyRelation: (edgeId: string) => void;
 
   autoLayout: () => void;
-  alignSelected: (tableIds: string[], alignment: Alignment) => void;
-  distributeSelected: (tableIds: string[], direction: Distribution) => void;
 }
 
 const initialDiagram = createDiagram('Physical ERD Model');
@@ -433,20 +429,6 @@ export const useDiagramStore = create<DiagramStore>()(
             ...updateActive(state, (d) => hierarchicalAutoLayout(d)),
           }));
         },
-
-        alignSelected: (tableIds, alignment) => {
-          set((state) => ({
-            ...pushHistory(state, null),
-            ...updateActive(state, (d) => alignNodes(d, tableIds, alignment)),
-          }));
-        },
-
-        distributeSelected: (tableIds, direction) => {
-          set((state) => ({
-            ...pushHistory(state, null),
-            ...updateActive(state, (d) => distributeNodes(d, tableIds, direction)),
-          }));
-        },
       }),
       {
         name: STORAGE_KEY,
@@ -501,14 +483,15 @@ function updateActive(state: DiagramStore, mutator: (d: Diagram) => Diagram): Pa
 function createRelationshipFromConnection(diagram: Diagram, connection: Connection): Diagram {
   if (!connection.source || !connection.target) return diagram;
 
-  // Resolve source column: validate handle maps to a real column (handles "header-source" and table-level IDs)
-  const rawSourceId = connection.sourceHandle?.replace(/-source$/, '');
+  // Resolve source column: validate handle maps to a real column (handles "header-source" and table-level IDs).
+  // Column handles carry a "-left"/"-right" side suffix (for direction-aware rendering) that isn't part of the id.
+  const rawSourceId = connection.sourceHandle?.replace(/-source(-left|-right)?$/, '');
   const sourceColumn = rawSourceId ? getColumn(diagram, connection.source, rawSourceId) : undefined;
   const sourceColumnId = sourceColumn?.id ?? primaryKeyOf(diagram, connection.source)?.id;
   if (!sourceColumnId) return diagram;
 
   // Resolve target column: may be undefined if user dropped on table-level handle (auto-creates FK)
-  const rawTargetId = connection.targetHandle?.replace(/-target$/, '');
+  const rawTargetId = connection.targetHandle?.replace(/-target(-left|-right)?$/, '');
   const targetColumn = rawTargetId ? getColumn(diagram, connection.target, rawTargetId) : undefined;
 
   // Auto-detect reversed direction: user dragged FROM a non-PK column TO a PK column.
@@ -734,30 +717,6 @@ function snap(position: { x: number; y: number }, gridSize: number) {
   };
 }
 
-function alignNodes(diagram: Diagram, tableIds: string[], alignment: Alignment): Diagram {
-  const selected = diagram.nodes.filter((node) => tableIds.includes(node.id));
-  if (selected.length < 2) return diagram;
-  const minX = Math.min(...selected.map((node) => node.position.x));
-  const maxX = Math.max(...selected.map((node) => node.position.x));
-  const minY = Math.min(...selected.map((node) => node.position.y));
-  const maxY = Math.max(...selected.map((node) => node.position.y));
-  const centerX = selected.reduce((sum, node) => sum + node.position.x, 0) / selected.length;
-  const centerY = selected.reduce((sum, node) => sum + node.position.y, 0) / selected.length;
-
-  return {
-    ...diagram,
-    nodes: diagram.nodes.map((node) => {
-      if (!tableIds.includes(node.id)) return node;
-      if (alignment === 'left') return { ...node, position: { ...node.position, x: minX } };
-      if (alignment === 'right') return { ...node, position: { ...node.position, x: maxX } };
-      if (alignment === 'center') return { ...node, position: { ...node.position, x: centerX } };
-      if (alignment === 'top') return { ...node, position: { ...node.position, y: minY } };
-      if (alignment === 'bottom') return { ...node, position: { ...node.position, y: maxY } };
-      return { ...node, position: { ...node.position, y: centerY } };
-    }),
-  };
-}
-
 function hierarchicalAutoLayout(diagram: Diagram): Diagram {
   const { nodes, edges } = diagram;
   if (nodes.length === 0) return diagram;
@@ -771,8 +730,9 @@ function hierarchicalAutoLayout(diagram: Diagram): Diagram {
   g.setDefaultEdgeLabel(() => ({}));
   g.setGraph({
     rankdir: 'LR',
-    ranksep: 340, // horizontal gap between rank columns — leaves room for edge labels
-    nodesep: 60,  // vertical gap between nodes in the same rank column
+    ranksep: 380, // horizontal gap between rank columns — leaves room for edge labels
+    nodesep: 90,  // vertical gap between nodes in the same rank column — keeps hub tables from packing edges into a tight corridor
+    edgesep: 40,  // spread for edges that share a rank crossing — fans out parallel long relations instead of bunching them
     marginx: 80,
     marginy: 80,
   });
@@ -790,23 +750,4 @@ function hierarchicalAutoLayout(diagram: Diagram): Diagram {
       return { ...n, position: snap({ x: x - NODE_W / 2, y: y - nodeH(n.id) / 2 }, gridSize) };
     }),
   };
-}
-
-function distributeNodes(diagram: Diagram, tableIds: string[], direction: Distribution): Diagram {
-  const selected = diagram.nodes.filter((node) => tableIds.includes(node.id));
-  if (selected.length < 3) return diagram;
-  const sorted = [...selected].sort((a, b) =>
-    direction === 'horizontal' ? a.position.x - b.position.x : a.position.y - b.position.y
-  );
-  const first = sorted[0];
-  const last = sorted[sorted.length - 1];
-  const gap = direction === 'horizontal'
-    ? (last.position.x - first.position.x) / (sorted.length - 1)
-    : (last.position.y - first.position.y) / (sorted.length - 1);
-  const map = new Map(sorted.map((node, index) => [node.id, direction === 'horizontal'
-    ? { ...node.position, x: first.position.x + index * gap }
-    : { ...node.position, y: first.position.y + index * gap }
-  ]));
-
-  return { ...diagram, nodes: diagram.nodes.map((node) => map.has(node.id) ? { ...node, position: map.get(node.id)! } : node) };
 }

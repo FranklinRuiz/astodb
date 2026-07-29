@@ -59,7 +59,7 @@ export function PropertiesPanel() {
   if (!isOpen) return null;
 
   return (
-    <aside className="w-96 border-l border-border bg-card flex flex-col h-full animate-slide-in-right">
+    <aside className="w-[28rem] border-l border-border bg-card flex flex-col h-full animate-slide-in-right">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between flex-shrink-0">
         <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
           {selectedTableId ? 'Table Designer' : selectedEdgeId ? 'Relation Designer' : 'Validation'}

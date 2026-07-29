@@ -105,16 +105,38 @@ export function Canvas() {
     }));
   }, [activeDiagram, connectedNodeIds]);
 
+  const nodePositionById = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const node of activeDiagram?.nodes ?? []) {
+      map.set(node.id, node.position.x + (node.measured?.width ?? 170));
+    }
+    return map;
+  }, [activeDiagram]);
+
   const edges = useMemo((): RelationEdgeType[] => {
-    return rawEdges.map((edge) => ({
-      ...edge,
-      data: {
-        ...edge.data,
-        dimmed: connectedEdgeIds ? !connectedEdgeIds.has(edge.id) : false,
-        highlighted: connectedEdgeIds ? connectedEdgeIds.has(edge.id) && !!focusTableId : false,
-      } as RelationEdgeType['data'],
-    }));
-  }, [rawEdges, connectedEdgeIds, focusTableId]);
+    return rawEdges.map((edge) => {
+      // Direction-aware handle side: exit/enter whichever side actually faces the other
+      // table post-layout, instead of always right→left. Cuts the long way-around routes
+      // that show up when auto-layout (or manual dragging) leaves a target table to the left
+      // of its source — Navicat-style "closest side" connectors instead of a fixed direction.
+      const sourceX = nodePositionById.get(edge.source) ?? 0;
+      const targetX = nodePositionById.get(edge.target) ?? 0;
+      const forward = targetX >= sourceX;
+      const sourceColumnId = edge.data?.sourceColumnId;
+      const targetColumnId = edge.data?.targetColumnId;
+
+      return {
+        ...edge,
+        ...(sourceColumnId && { sourceHandle: `${sourceColumnId}-source-${forward ? 'right' : 'left'}` }),
+        ...(targetColumnId && { targetHandle: `${targetColumnId}-target-${forward ? 'left' : 'right'}` }),
+        data: {
+          ...edge.data,
+          dimmed: connectedEdgeIds ? !connectedEdgeIds.has(edge.id) : false,
+          highlighted: connectedEdgeIds ? connectedEdgeIds.has(edge.id) && !!focusTableId : false,
+        } as RelationEdgeType['data'],
+      };
+    });
+  }, [rawEdges, connectedEdgeIds, focusTableId, nodePositionById]);
 
   const settings = activeDiagram?.settings;
 

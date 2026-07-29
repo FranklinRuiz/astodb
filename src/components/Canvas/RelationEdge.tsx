@@ -39,7 +39,7 @@ function RelationEdgeComponent({
 
   // Edges that span 2+ columns pass behind intermediate nodes (SVG renders below HTML nodes).
   // For those, duplicate the path inside EdgeLabelRenderer which renders above nodes.
-  const isLongEdge = targetX - sourceX > 640;
+  const isLongEdge = Math.abs(targetX - sourceX) > 640;
 
   const dimmed = data?.dimmed ?? false;
   const highlighted = data?.highlighted ?? false;

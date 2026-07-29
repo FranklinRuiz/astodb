@@ -10,13 +10,6 @@ import {
   Plus,
   Keyboard,
   LayoutGrid,
-  AlignHorizontalSpaceAround,
-  AlignStartVertical,
-  AlignCenterVertical,
-  AlignEndVertical,
-  AlignStartHorizontal,
-  AlignCenterHorizontal,
-  AlignEndHorizontal,
   Undo2,
   Redo2,
   Search,
@@ -76,12 +69,7 @@ export function Toolbar() {
   const redo = useDiagramStore((s) => s.redo);
   const canUndo = useDiagramStore((s) => s.history.past.length > 0);
   const canRedo = useDiagramStore((s) => s.history.future.length > 0);
-  const alignSelected = useDiagramStore((s) => s.alignSelected);
-  const distributeSelected = useDiagramStore((s) => s.distributeSelected);
-  const selectedTableIds = useUIStore((s) => s.selectedTableIds);
   const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen);
-  const canAlign = selectedTableIds.length >= 2;
-  const canDistribute = selectedTableIds.length >= 3;
 
   const handleSaveProject = () => {
     const diagram = getActiveDiagram();
@@ -229,52 +217,6 @@ export function Toolbar() {
           </TooltipTrigger>
           <TooltipContent>Arrange tables automatically</TooltipContent>
         </Tooltip>
-
-        <DropdownMenu>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 gap-1.5" disabled={!canAlign}>
-                  <AlignHorizontalSpaceAround className="w-3.5 h-3.5" />
-                  <span className="text-xs">Align</span>
-                </Button>
-              </DropdownMenuTrigger>
-            </TooltipTrigger>
-            <TooltipContent>
-              {canAlign ? 'Align or distribute selected tables' : 'Shift-drag to select 2+ tables to align'}
-            </TooltipContent>
-          </Tooltip>
-          <DropdownMenuContent align="start" className="w-52">
-            <DropdownMenuLabel>Align ({selectedTableIds.length} selected)</DropdownMenuLabel>
-            <DropdownMenuItem disabled={!canAlign} onClick={() => alignSelected(selectedTableIds, 'left')}>
-              <AlignStartVertical className="w-3.5 h-3.5" /> Align left
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled={!canAlign} onClick={() => alignSelected(selectedTableIds, 'center')}>
-              <AlignCenterVertical className="w-3.5 h-3.5" /> Align center
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled={!canAlign} onClick={() => alignSelected(selectedTableIds, 'right')}>
-              <AlignEndVertical className="w-3.5 h-3.5" /> Align right
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem disabled={!canAlign} onClick={() => alignSelected(selectedTableIds, 'top')}>
-              <AlignStartHorizontal className="w-3.5 h-3.5" /> Align top
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled={!canAlign} onClick={() => alignSelected(selectedTableIds, 'middle')}>
-              <AlignCenterHorizontal className="w-3.5 h-3.5" /> Align middle
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled={!canAlign} onClick={() => alignSelected(selectedTableIds, 'bottom')}>
-              <AlignEndHorizontal className="w-3.5 h-3.5" /> Align bottom
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel>Distribute (3+ selected)</DropdownMenuLabel>
-            <DropdownMenuItem disabled={!canDistribute} onClick={() => distributeSelected(selectedTableIds, 'horizontal')}>
-              Distribute horizontally
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled={!canDistribute} onClick={() => distributeSelected(selectedTableIds, 'vertical')}>
-              Distribute vertically
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
 
         <div className="w-px h-5 bg-border mx-1" />
 

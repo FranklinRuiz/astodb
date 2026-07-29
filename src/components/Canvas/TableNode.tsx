@@ -153,7 +153,7 @@ function ColumnRow({ column, tableId, compact }: { column: Column; tableId: stri
       <Handle
         type="source"
         position={Position.Right}
-        id={`${column.id}-source`}
+        id={`${column.id}-source-right`}
         title="Drag to connect this column"
         className={cn(
           '!absolute !right-[3px] !top-1/2 !-translate-y-1/2',
@@ -161,6 +161,17 @@ function ColumnRow({ column, tableId, compact }: { column: Column; tableId: stri
           'opacity-0 group-hover/col:opacity-100 transition-opacity cursor-grab !z-10',
         )}
         isConnectable
+      />
+
+      {/* Mirrored source anchor — invisible, non-interactive. Used only so a relation
+          can render its path exiting the left side when the related table sits to the
+          left after layout, instead of always looping out via the right edge. */}
+      <Handle
+        type="source"
+        position={Position.Left}
+        id={`${column.id}-source-left`}
+        className="!absolute !left-[3px] !top-1/2 !-translate-y-1/2 !w-3 !h-3 !opacity-0 !pointer-events-none"
+        isConnectable={false}
       />
 
       {/* Column type icon */}
@@ -222,7 +233,7 @@ function ColumnRow({ column, tableId, compact }: { column: Column; tableId: stri
       <Handle
         type="target"
         position={Position.Left}
-        id={`${column.id}-target`}
+        id={`${column.id}-target-left`}
         title="Drop here to connect to this column"
         className={cn(
           '!absolute !left-[3px] !top-1/2 !-translate-y-1/2',
@@ -230,6 +241,16 @@ function ColumnRow({ column, tableId, compact }: { column: Column; tableId: stri
           'opacity-0 group-hover/col:opacity-20 hover:!opacity-100 transition-opacity !z-10',
         )}
         isConnectable
+      />
+
+      {/* Mirrored target anchor — invisible, non-interactive. Lets a relation land on the
+          right side of this column when its source sits to the right after layout. */}
+      <Handle
+        type="target"
+        position={Position.Right}
+        id={`${column.id}-target-right`}
+        className="!absolute !right-[3px] !top-1/2 !-translate-y-1/2 !w-3 !h-3 !opacity-0 !pointer-events-none"
+        isConnectable={false}
       />
     </div>
   );

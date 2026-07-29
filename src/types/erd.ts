@@ -79,8 +79,6 @@ export const REFERENTIAL_ACTIONS = [
 
 export type ReferentialAction = (typeof REFERENTIAL_ACTIONS)[number];
 export type RelationType = 'one-to-one' | 'one-to-many' | 'many-to-many';
-export type Alignment = 'left' | 'right' | 'center' | 'top' | 'bottom' | 'middle';
-export type Distribution = 'horizontal' | 'vertical';
 
 export interface Column {
   id: string;
