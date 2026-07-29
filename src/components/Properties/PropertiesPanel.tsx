@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/UI/select';
+import { toast } from 'sonner';
 import { useDiagramStore, useUIStore } from '@/store';
 import { REFERENTIAL_ACTIONS, type Column, type RelationType, type ReferentialAction } from '@/types';
 import { TABLE_COLORS } from '@/constants';
@@ -48,6 +49,52 @@ function parseTypeParam(type: string): { base: string; param: string } {
   const m = type.match(/^([A-Z_]+)\((.+)\)$/i);
   if (m) return { base: m[1].toUpperCase(), param: m[2] };
   return { base: type.toUpperCase().split('(')[0].trim(), param: '' };
+}
+
+/** Catches precision/scale/length mistakes that SQL Server only rejects at CREATE TABLE time
+ *  (e.g. TIME(9), DECIMAL(5,10)) or a typo that isn't even a number (e.g. TIME(o)) — before now
+ *  this field accepted anything and just concatenated it straight into the column type. */
+function validateTypeParam(base: string, raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  if (base === 'TIME' || base === 'DATETIME2' || base === 'DATETIMEOFFSET') {
+    if (!/^\d+$/.test(trimmed) || Number(trimmed) > 7) {
+      return `${base}(n) requires a whole number between 0 and 7`;
+    }
+    return null;
+  }
+
+  if (base === 'FLOAT') {
+    const n = Number(trimmed);
+    if (!/^\d+$/.test(trimmed) || n < 1 || n > 53) {
+      return 'FLOAT(n) requires a whole number between 1 and 53';
+    }
+    return null;
+  }
+
+  if (base === 'DECIMAL' || base === 'NUMERIC') {
+    const m = trimmed.match(/^(\d+)(?:,(\d+))?$/);
+    if (!m) return `${base}(precision, scale) requires numbers, e.g. 10,2`;
+    const precision = Number(m[1]);
+    const scale = m[2] !== undefined ? Number(m[2]) : 0;
+    if (precision < 1 || precision > 38) return 'Precision must be between 1 and 38';
+    if (scale > precision) return `Scale can't be greater than the precision (${precision})`;
+    return null;
+  }
+
+  if (base === 'VARCHAR' || base === 'NVARCHAR' || base === 'VARBINARY') {
+    if (/^max$/i.test(trimmed)) return null;
+    if (!/^\d+$/.test(trimmed) || Number(trimmed) < 1) return `${base}(n) requires a positive whole number or MAX`;
+    return null;
+  }
+
+  if (base === 'CHAR' || base === 'NCHAR' || base === 'BINARY') {
+    if (!/^\d+$/.test(trimmed) || Number(trimmed) < 1) return `${base}(n) requires a positive whole number`;
+    return null;
+  }
+
+  return null;
 }
 
 export function PropertiesPanel() {
@@ -161,6 +208,12 @@ function ColumnEditor({ column, tableId, index, totalColumns }: { column: Column
 
   const commitLongitud = (val: string) => {
     const trimmed = val.trim();
+    const error = validateTypeParam(base, trimmed);
+    if (error) {
+      toast.error(error);
+      setLocalParam(param); // revert to the last valid value
+      return;
+    }
     setLocalParam(trimmed);
     updateColumn(tableId, column.id, { type: trimmed ? `${base}(${trimmed})` : base });
   };

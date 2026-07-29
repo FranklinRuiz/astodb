@@ -102,8 +102,8 @@ export function Sidebar() {
         <div className="flex-1 w-full min-h-0 flex flex-col items-center gap-1.5 py-3">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggleSidebar}>
-                <PanelLeftOpen className="w-3.5 h-3.5" />
+              <Button variant="ghost" size="icon" className="h-10 w-10" onClick={toggleSidebar}>
+                <PanelLeftOpen className="w-5 h-5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="right">Expand sidebar</TooltipContent>
@@ -179,8 +179,8 @@ export function Sidebar() {
         </div>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={toggleSidebar}>
-              <PanelLeftClose className="w-3.5 h-3.5" />
+            <Button variant="ghost" size="icon" className="h-10 w-10 flex-shrink-0" onClick={toggleSidebar}>
+              <PanelLeftClose className="w-5 h-5" />
             </Button>
           </TooltipTrigger>
           <TooltipContent side="right">Collapse sidebar</TooltipContent>

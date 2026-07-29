@@ -114,7 +114,7 @@ export function Toolbar() {
       const diagram = parseDBMLToDiagram(dbmlImportText, 'Imported Diagram');
       loadDiagram(diagram);
       useDiagramStore.getState().autoLayout();
-      setTimeout(() => getFlowInstance()?.fitView({ padding: 0.2, maxZoom: 1, duration: 400 }), 50);
+      setTimeout(() => getFlowInstance()?.fitView({ padding: 0.04, maxZoom: 2, duration: 400 }), 50);
       setDbmlImportOpen(false);
       setDbmlImportText('');
       toast.success(`Diagram imported from DBML (${diagram.nodes.length} tables)`);
@@ -206,7 +206,7 @@ export function Toolbar() {
               onClick={() => {
                 autoLayout();
                 setTimeout(() => {
-                  getFlowInstance()?.fitView({ padding: 0.2, maxZoom: 1, duration: 400 });
+                  getFlowInstance()?.fitView({ padding: 0.04, maxZoom: 2, duration: 400 });
                 }, 50);
               }}
               className="h-8 gap-1.5"

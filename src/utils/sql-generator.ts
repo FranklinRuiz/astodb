@@ -68,14 +68,56 @@ function buildColumnDef(col: Column): string {
   const parts: string[] = [q(col.name), col.type];
   if (col.isAutoIncrement) parts.push('IDENTITY(1,1)');
   parts.push(col.isNullable ? 'NULL' : 'NOT NULL');
-  if (col.defaultValue !== undefined && col.defaultValue !== '') {
-    const isNumeric = /^-?\d+(\.\d+)?$/.test(col.defaultValue);
-    const isFunction = /^[A-Z_]+\(\d*\)$/.test(col.defaultValue);
-    const value = isNumeric || isFunction ? col.defaultValue : `'${col.defaultValue.replace(/'/g, "''")}'`;
-    parts.push(`DEFAULT ${value}`);
+  if (col.defaultValue !== undefined && col.defaultValue.trim() !== '') {
+    parts.push(`DEFAULT ${formatDefaultValue(col.defaultValue, col.type)}`);
   }
   if (col.comment) parts.push(`/* ${col.comment} */`);
   return parts.join(' ');
+}
+
+// Niladic T-SQL builtins that are called without parentheses.
+const NILADIC_FUNCTIONS = new Set(['CURRENT_TIMESTAMP', 'CURRENT_USER', 'SESSION_USER', 'SYSTEM_USER']);
+
+function isFunctionDefault(value: string): boolean {
+  const upper = value.toUpperCase();
+  if (NILADIC_FUNCTIONS.has(upper)) return true;
+  // A bare call like GETDATE() or NEWID() — case-insensitive, so "getdate()" isn't
+  // mistaken for a text literal and quoted (which fails conversion on first use).
+  return /^[A-Z_][A-Z0-9_]*\([^'"]*\)$/.test(upper);
+}
+
+type TypeFamily = 'bit' | 'numeric' | 'text' | 'other';
+
+function typeFamily(type: string): TypeFamily {
+  const upper = type.toUpperCase();
+  if (upper.startsWith('BIT')) return 'bit';
+  if (/^(INT|BIGINT|SMALLINT|TINYINT|DECIMAL|NUMERIC|FLOAT|REAL|MONEY|SMALLMONEY)/.test(upper)) return 'numeric';
+  if (/^(N?VARCHAR|N?CHAR|N?TEXT)/.test(upper)) return 'text';
+  return 'other';
+}
+
+/** Formats a column's default so it matches its declared type instead of just guessing from the
+ *  literal's shape — e.g. 'true'/'false' on a BIT column, or a numeric-looking default meant as
+ *  text (e.g. '007'), previously slipped through unquoted/mis-typed and only failed at runtime. */
+function formatDefaultValue(rawValue: string, type: string): string {
+  const value = rawValue.trim();
+  if (isFunctionDefault(value)) return value;
+
+  const family = typeFamily(type);
+  const quoted = `'${value.replace(/'/g, "''")}'`;
+
+  if (family === 'bit') {
+    const lower = value.toLowerCase();
+    if (lower === 'true') return '1';
+    if (lower === 'false') return '0';
+    if (value === '0' || value === '1') return value;
+    return quoted;
+  }
+  if (family === 'text') return quoted;
+  if (family === 'numeric') return /^-?\d+(\.\d+)?$/.test(value) ? value : quoted;
+  // Dates and everything else: a numeric constant passes through as-is, anything else
+  // (including date literals like '2024-01-01') needs quotes for SQL Server to parse it.
+  return /^-?\d+(\.\d+)?$/.test(value) ? value : quoted;
 }
 
 function noRestrict(action: string | undefined, fallback: string): string {
@@ -112,6 +154,17 @@ function buildForeignKeys(edges: RelationEdge[], tables: Table[]): string[] {
     );
     statements.push('GO');
     statements.push('');
+
+    // SQL Server, unlike MySQL/Postgres, does not index the FK column automatically —
+    // without one, every DELETE/UPDATE on the parent table scans the child table.
+    // Skip it when the column is already a PK or UNIQUE, since those already have an index.
+    if (!childCol.isPrimaryKey && !childCol.isUnique) {
+      statements.push(
+        `CREATE INDEX ${q(`ix_${childTable.name}_${childCol.name}`)} ON ${tableRef(childTable)} (${q(childCol.name)});`
+      );
+      statements.push('GO');
+      statements.push('');
+    }
   }
 
   return statements;

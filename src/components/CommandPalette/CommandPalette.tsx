@@ -88,7 +88,7 @@ export function CommandPalette() {
     const diagram = getActiveDiagram();
     const list: PaletteItem[] = [
       { id: 'new-table', section: 'Actions', label: 'New table', icon: <Plus className="w-3.5 h-3.5" />, run: () => addTable() },
-      { id: 'auto-layout', section: 'Actions', label: 'Auto layout', icon: <LayoutGrid className="w-3.5 h-3.5" />, run: () => { autoLayout(); setTimeout(() => getFlowInstance()?.fitView({ padding: 0.2, maxZoom: 1, duration: 400 }), 50); } },
+      { id: 'auto-layout', section: 'Actions', label: 'Auto layout', icon: <LayoutGrid className="w-3.5 h-3.5" />, run: () => { autoLayout(); setTimeout(() => getFlowInstance()?.fitView({ padding: 0.04, maxZoom: 2, duration: 400 }), 50); } },
       { id: 'undo', section: 'Actions', label: 'Undo', icon: <Undo2 className="w-3.5 h-3.5" />, run: () => undo() },
       { id: 'redo', section: 'Actions', label: 'Redo', icon: <Redo2 className="w-3.5 h-3.5" />, run: () => redo() },
       {
