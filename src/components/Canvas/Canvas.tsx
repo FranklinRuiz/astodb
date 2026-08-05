@@ -113,15 +113,85 @@ export function Canvas() {
     return map;
   }, [activeDiagram]);
 
+  const nodeCenterYById = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const node of activeDiagram?.nodes ?? []) {
+      map.set(node.id, node.position.y + (node.measured?.height ?? 100) / 2);
+    }
+    return map;
+  }, [activeDiagram]);
+
+  // A column can carry more than one relation on the same side (e.g. a PK referenced by
+  // several FKs) — they all exit from that column's single handle point. Group edges by
+  // (table, column, side) and rank each one by the vertical position of the table it connects
+  // to (the relation pointing to whichever table sits higher gets rank 0). RelationEdge uses
+  // this rank to fan the lines apart visually right after they leave the shared point, instead
+  // of drawing them stacked directly on top of each other.
+  const fanAssignment = useMemo(() => {
+    const fanByEdge = new Map<string, { sourceIndex: number; sourceCount: number; targetIndex: number; targetCount: number }>();
+    const forwardByEdge = new Map<string, boolean>();
+
+    const groups = new Map<string, { edgeId: string; otherY: number }[]>();
+    const groupKey = (tableId: string, columnId: string, kind: string) => `${tableId} ${columnId} ${kind}`;
+
+    for (const edge of rawEdges) {
+      const sourceX = nodePositionById.get(edge.source) ?? 0;
+      const targetX = nodePositionById.get(edge.target) ?? 0;
+      const forward = targetX >= sourceX;
+      forwardByEdge.set(edge.id, forward);
+      const sourceKind = forward ? 'source-right' : 'source-left';
+      const targetKind = forward ? 'target-left' : 'target-right';
+      const sourceColumnId = edge.data?.sourceColumnId;
+      const targetColumnId = edge.data?.targetColumnId;
+      if (sourceColumnId) {
+        const key = groupKey(edge.source, sourceColumnId, sourceKind);
+        const arr = groups.get(key) ?? [];
+        arr.push({ edgeId: edge.id, otherY: nodeCenterYById.get(edge.target) ?? 0 });
+        groups.set(key, arr);
+      }
+      if (targetColumnId) {
+        const key = groupKey(edge.target, targetColumnId, targetKind);
+        const arr = groups.get(key) ?? [];
+        arr.push({ edgeId: edge.id, otherY: nodeCenterYById.get(edge.source) ?? 0 });
+        groups.set(key, arr);
+      }
+    }
+
+    const orderedIds = new Map<string, string[]>();
+    for (const [key, arr] of groups) {
+      const sorted = [...arr].sort((a, b) => a.otherY - b.otherY || a.edgeId.localeCompare(b.edgeId));
+      orderedIds.set(key, sorted.map((e) => e.edgeId));
+    }
+
+    for (const edge of rawEdges) {
+      const forward = forwardByEdge.get(edge.id) ?? true;
+      const sourceKind = forward ? 'source-right' : 'source-left';
+      const targetKind = forward ? 'target-left' : 'target-right';
+      const sourceColumnId = edge.data?.sourceColumnId;
+      const targetColumnId = edge.data?.targetColumnId;
+
+      const sourceIds = sourceColumnId ? orderedIds.get(groupKey(edge.source, sourceColumnId, sourceKind)) : undefined;
+      const targetIds = targetColumnId ? orderedIds.get(groupKey(edge.target, targetColumnId, targetKind)) : undefined;
+
+      fanByEdge.set(edge.id, {
+        sourceIndex: sourceIds?.indexOf(edge.id) ?? 0,
+        sourceCount: sourceIds?.length ?? 1,
+        targetIndex: targetIds?.indexOf(edge.id) ?? 0,
+        targetCount: targetIds?.length ?? 1,
+      });
+    }
+
+    return { fanByEdge, forwardByEdge };
+  }, [rawEdges, nodePositionById, nodeCenterYById]);
+
   const edges = useMemo((): RelationEdgeType[] => {
     return rawEdges.map((edge) => {
       // Direction-aware handle side: exit/enter whichever side actually faces the other
       // table post-layout, instead of always right→left. Cuts the long way-around routes
       // that show up when auto-layout (or manual dragging) leaves a target table to the left
       // of its source — Navicat-style "closest side" connectors instead of a fixed direction.
-      const sourceX = nodePositionById.get(edge.source) ?? 0;
-      const targetX = nodePositionById.get(edge.target) ?? 0;
-      const forward = targetX >= sourceX;
+      const forward = fanAssignment.forwardByEdge.get(edge.id) ?? true;
+      const fan = fanAssignment.fanByEdge.get(edge.id);
       const sourceColumnId = edge.data?.sourceColumnId;
       const targetColumnId = edge.data?.targetColumnId;
 
@@ -133,10 +203,14 @@ export function Canvas() {
           ...edge.data,
           dimmed: connectedEdgeIds ? !connectedEdgeIds.has(edge.id) : false,
           highlighted: connectedEdgeIds ? connectedEdgeIds.has(edge.id) && !!focusTableId : false,
+          sourceFanIndex: fan?.sourceIndex ?? 0,
+          sourceFanCount: fan?.sourceCount ?? 1,
+          targetFanIndex: fan?.targetIndex ?? 0,
+          targetFanCount: fan?.targetCount ?? 1,
         } as RelationEdgeType['data'],
       };
     });
-  }, [rawEdges, connectedEdgeIds, focusTableId, nodePositionById]);
+  }, [rawEdges, connectedEdgeIds, focusTableId, fanAssignment]);
 
   const settings = activeDiagram?.settings;
 

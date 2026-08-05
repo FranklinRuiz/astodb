@@ -10,6 +10,29 @@ import type { RelationEdge as RelationEdgeType, RelationType } from '@/types';
 import { useDiagramStore, useUIStore } from '@/store';
 import { cn } from '@/lib/utils';
 
+/** How far straight out from the shared anchor before a fanned line starts nudging sideways. */
+const FAN_LEAD = 12;
+/** Perpendicular gap between adjacent lines in a fan. */
+const FAN_SPACING = 6;
+
+function fanOffset(index: number, count: number): number {
+  if (count <= 1) return 0;
+  return (index - (count - 1) / 2) * FAN_SPACING;
+}
+
+function dirVector(position: string): { x: number; y: number } {
+  switch (position) {
+    case 'left':
+      return { x: -1, y: 0 };
+    case 'right':
+      return { x: 1, y: 0 };
+    case 'top':
+      return { x: 0, y: -1 };
+    default:
+      return { x: 0, y: 1 };
+  }
+}
+
 function RelationEdgeComponent({
   id,
   sourceX,
@@ -24,15 +47,42 @@ function RelationEdgeComponent({
   const deleteEdge = useDiagramStore((s) => s.deleteEdge);
   const selectEdge = useUIStore((s) => s.selectEdge);
 
-  const [edgePath, labelX, labelY] = getSmoothStepPath({
-    sourceX,
-    sourceY,
+  const sourceFanCount = data?.sourceFanCount ?? 1;
+  const targetFanCount = data?.targetFanCount ?? 1;
+  const sOffset = fanOffset(data?.sourceFanIndex ?? 0, sourceFanCount);
+  const tOffset = fanOffset(data?.targetFanIndex ?? 0, targetFanCount);
+
+  // A column can carry more than one relation, and they all exit from that column's single
+  // handle point — left as-is, their lines would be drawn stacked exactly on top of each
+  // other. When this edge has siblings there (fan count > 1), run a short straight lead out
+  // from the true point, then nudge sideways into this edge's own lane before handing off to
+  // the normal step-path routing, so the bundle reads as a small fan instead of one line.
+  const sDir = dirVector(sourcePosition);
+  const tDir = dirVector(targetPosition);
+  const sourceLead = { x: sourceX + sDir.x * FAN_LEAD, y: sourceY + sDir.y * FAN_LEAD };
+  const effSourceX = sourceLead.x + (sDir.x === 0 ? sOffset : 0);
+  const effSourceY = sourceLead.y + (sDir.x !== 0 ? sOffset : 0);
+  const targetLead = { x: targetX + tDir.x * FAN_LEAD, y: targetY + tDir.y * FAN_LEAD };
+  const effTargetX = targetLead.x + (tDir.x === 0 ? tOffset : 0);
+  const effTargetY = targetLead.y + (tDir.x !== 0 ? tOffset : 0);
+
+  const [smoothPath, labelX, labelY] = getSmoothStepPath({
+    sourceX: effSourceX,
+    sourceY: effSourceY,
     sourcePosition,
-    targetX,
-    targetY,
+    targetX: effTargetX,
+    targetY: effTargetY,
     targetPosition,
     borderRadius: 12,
   });
+
+  // Chain: true anchor -> straight lead -> fan lane, then the library's own step path (which
+  // already starts exactly at the fan lane point, so the leading "M" it emits is a harmless
+  // no-op), then the same lead/anchor pair in reverse on the target side.
+  const edgePath =
+    `M ${sourceX},${sourceY} L ${sourceLead.x},${sourceLead.y} L ${effSourceX},${effSourceY} ` +
+    smoothPath +
+    ` L ${targetLead.x},${targetLead.y} L ${targetX},${targetY}`;
 
   const cardinality = getCardinalityNotation(data?.type ?? 'one-to-many');
   const label = data?.label || data?.foreignKeyName || cardinality.label;
@@ -50,6 +100,15 @@ function RelationEdgeComponent({
   const edgeStrokeWidth = selected ? 2.25 : highlighted ? 2 : 1.5;
   const edgeDash = data?.isIdentifying ? undefined : '6 4';
   const edgeOpacity = dimmed ? 0.12 : 1;
+
+  // A lone relation keeps its cardinality mark right at the table border, like before. Once a
+  // point has siblings, each fanned-out line needs its own mark in its own lane — otherwise
+  // every relation sharing that point would draw its "one"/crow's-foot mark on top of the
+  // others, or the single leftover mark wouldn't line up with any of the separated lines.
+  const sourceMarkerX = sourceFanCount > 1 ? effSourceX : sourceX;
+  const sourceMarkerY = sourceFanCount > 1 ? effSourceY : sourceY;
+  const targetMarkerX = targetFanCount > 1 ? effTargetX : targetX;
+  const targetMarkerY = targetFanCount > 1 ? effTargetY : targetY;
 
   return (
     <>
@@ -103,15 +162,15 @@ function RelationEdgeComponent({
           }}
         >
           <CardinalityMarker
-            x={sourceX}
-            y={sourceY}
+            x={sourceMarkerX}
+            y={sourceMarkerY}
             position={sourcePosition}
             notation={cardinality.source}
             selected={selected ?? false}
           />
           <CardinalityMarker
-            x={targetX}
-            y={targetY}
+            x={targetMarkerX}
+            y={targetMarkerY}
             position={targetPosition}
             notation={cardinality.target}
             selected={selected ?? false}

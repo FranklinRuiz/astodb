@@ -125,6 +125,14 @@ export interface RelationData extends Record<string, unknown> {
   isIdentifying?: boolean;
   dimmed?: boolean;
   highlighted?: boolean;
+  /** Position (and total count) of this relation among siblings sharing the same source/target
+   *  column+side, ordered by the connected table's vertical position. All siblings still exit
+   *  from the same handle point — RelationEdge uses this to fan the lines apart right after
+   *  they leave it, instead of drawing them stacked on top of each other. */
+  sourceFanIndex?: number;
+  sourceFanCount?: number;
+  targetFanIndex?: number;
+  targetFanCount?: number;
 }
 
 export type RelationEdge = Edge<RelationData, 'relationEdge'>;
