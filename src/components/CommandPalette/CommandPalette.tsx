@@ -115,15 +115,15 @@ export function CommandPalette() {
         },
       },
       {
-        id: 'save-project', section: 'Actions', label: 'Save project (.json)', icon: <Save className="w-3.5 h-3.5" />,
+        id: 'save-project', section: 'Actions', label: 'Save project (.asto)', icon: <Save className="w-3.5 h-3.5" />,
         run: () => {
           if (!diagram) return;
-          downloadFile(exportDiagramAsJSON(diagram), `${slugify(diagram.name)}.json`, 'application/json');
+          downloadFile(exportDiagramAsJSON(diagram), `${slugify(diagram.name)}.asto`, 'application/json');
           toast.success('Project saved');
         },
       },
       {
-        id: 'open-project', section: 'Actions', label: 'Open project (.json)', icon: <FolderOpen className="w-3.5 h-3.5" />,
+        id: 'open-project', section: 'Actions', label: 'Open project (.asto)', icon: <FolderOpen className="w-3.5 h-3.5" />,
         run: () => document.getElementById('astodb-open-project-input')?.click(),
       },
       { id: 'new-diagram', section: 'Actions', label: 'New diagram', icon: <FilePlus2 className="w-3.5 h-3.5" />, run: () => createNewDiagram() },

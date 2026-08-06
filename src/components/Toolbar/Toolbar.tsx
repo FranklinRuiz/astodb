@@ -75,7 +75,7 @@ export function Toolbar() {
     const diagram = getActiveDiagram();
     if (!diagram) return;
     const json = exportDiagramAsJSON(diagram);
-    downloadFile(json, `${slugify(diagram.name)}.json`, 'application/json');
+    downloadFile(json, `${slugify(diagram.name)}.asto`, 'application/json');
     toast.success('Project saved — open this file later to continue editing');
   };
 
@@ -233,7 +233,7 @@ export function Toolbar() {
               <span className="text-xs">Open</span>
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Open project file (.json) to continue editing</TooltipContent>
+          <TooltipContent>Open project file (.asto) to continue editing</TooltipContent>
         </Tooltip>
 
         {/* Import DBML */}
@@ -265,7 +265,7 @@ export function Toolbar() {
               <span className="text-xs">Save</span>
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Save project (.json) — reload to continue editing later</TooltipContent>
+          <TooltipContent>Save project (.asto) — reload to continue editing later</TooltipContent>
         </Tooltip>
 
         {/* Export dropdown: SQL / images */}
@@ -334,7 +334,7 @@ export function Toolbar() {
           id="astodb-open-project-input"
           ref={fileInputRef}
           type="file"
-          accept="application/json,.json"
+          accept=".asto,application/json,.json"
           onChange={handleImport}
           className="hidden"
         />
@@ -524,7 +524,7 @@ function SavedIndicator({ updatedAt }: { updatedAt?: string }) {
           {label}
         </span>
       </TooltipTrigger>
-      <TooltipContent>Autosaved to this browser — use Save to export a .json backup</TooltipContent>
+      <TooltipContent>Autosaved to this browser — use Save to export a .asto backup</TooltipContent>
     </Tooltip>
   );
 }
