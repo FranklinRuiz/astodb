@@ -12,6 +12,7 @@ import {
   Table as TableIcon,
   Columns3,
   Zap,
+  Maximize2,
 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/UI/dialog';
 import { useDiagramStore, useUIStore } from '@/store';
@@ -89,6 +90,7 @@ export function CommandPalette() {
     const list: PaletteItem[] = [
       { id: 'new-table', section: 'Actions', label: 'New table', icon: <Plus className="w-3.5 h-3.5" />, run: () => addTable() },
       { id: 'auto-layout', section: 'Actions', label: 'Auto layout', icon: <LayoutGrid className="w-3.5 h-3.5" />, run: () => { autoLayout(); setTimeout(() => getFlowInstance()?.fitView({ padding: 0.04, maxZoom: 2, duration: 400 }), 50); } },
+      { id: 'fit-view', section: 'Actions', label: 'Fit view', icon: <Maximize2 className="w-3.5 h-3.5" />, run: () => getFlowInstance()?.fitView({ padding: 0.04, maxZoom: 2, duration: 400 }) },
       { id: 'undo', section: 'Actions', label: 'Undo', icon: <Undo2 className="w-3.5 h-3.5" />, run: () => undo() },
       { id: 'redo', section: 'Actions', label: 'Redo', icon: <Redo2 className="w-3.5 h-3.5" />, run: () => redo() },
       {

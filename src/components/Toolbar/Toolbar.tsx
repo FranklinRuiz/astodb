@@ -15,6 +15,7 @@ import {
   Search,
   FileUp,
   Braces,
+  Maximize2,
 } from 'lucide-react';
 import { Button } from '@/components/UI/button';
 import {
@@ -216,6 +217,21 @@ export function Toolbar() {
             </Button>
           </TooltipTrigger>
           <TooltipContent>Arrange tables automatically</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => getFlowInstance()?.fitView({ padding: 0.04, maxZoom: 2, duration: 400 })}
+              className="h-8 gap-1.5"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+              <span className="text-xs">Fit view</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Zoom to fit all tables — keeps their current positions</TooltipContent>
         </Tooltip>
 
         <div className="w-px h-5 bg-border mx-1" />
