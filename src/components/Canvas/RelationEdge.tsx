@@ -166,6 +166,7 @@ function RelationEdgeComponent({
             y={sourceMarkerY}
             position={sourcePosition}
             notation={cardinality.source}
+            optional={data?.sourceOptional ?? true}
             selected={selected ?? false}
           />
           <CardinalityMarker
@@ -173,6 +174,7 @@ function RelationEdgeComponent({
             y={targetMarkerY}
             position={targetPosition}
             notation={cardinality.target}
+            optional={false}
             selected={selected ?? false}
           />
         </svg>
@@ -233,45 +235,71 @@ interface CardinalityMarkerProps {
   y: number;
   position: string;
   notation: 'one' | 'many';
+  /** Min cardinality: true draws a small circle further out on the line for "zero or ..."
+   *  (optional participation); false leaves just the bar/crow's-foot for "exactly ..."
+   *  (mandatory participation). Standard IE / crow's-foot notation. */
+  optional: boolean;
   selected: boolean;
 }
 
-function CardinalityMarker({ x, y, position, notation, selected }: CardinalityMarkerProps) {
+/** Distance from the node border where the cardinality symbol (bar or crow's-foot) touches. */
+const TOUCH = 6;
+/** How far the crow's-foot spreads before converging back to a point on the line. */
+const SPAN = 16;
+/** Gap between the cardinality symbol and the optionality circle beyond it. */
+const CIRCLE_GAP = 6;
+const CIRCLE_R = 4;
+
+function CardinalityMarker({ x, y, position, notation, optional, selected }: CardinalityMarkerProps) {
   const stroke = selected ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))';
   const horizontal = position === 'left' || position === 'right';
   const dir = position === 'left' || position === 'top' ? -1 : 1;
-  // gap: distance from node border before the marker starts
-  const gap = 6;
-  const offset = 16;
 
   if (notation === 'one') {
-    return horizontal ? (
-      <g stroke={stroke} strokeWidth={1.7} fill="none">
-        <line x1={x + dir * (gap + offset)} y1={y - 7} x2={x + dir * (gap + offset)} y2={y + 7} />
-      </g>
-    ) : (
-      <g stroke={stroke} strokeWidth={1.7} fill="none">
-        <line x1={x - 7} y1={y + dir * (gap + offset)} x2={x + 7} y2={y + dir * (gap + offset)} />
-      </g>
-    );
-  }
-
-  // many — crow's foot: vertex at gap from node border, fan opens over offset
-  if (horizontal) {
+    const barAt = TOUCH + 6;
+    const circleAt = barAt + CIRCLE_GAP + CIRCLE_R;
+    const bar = horizontal
+      ? <line x1={x + dir * barAt} y1={y - 7} x2={x + dir * barAt} y2={y + 7} />
+      : <line x1={x - 7} y1={y + dir * barAt} x2={x + 7} y2={y + dir * barAt} />;
     return (
       <g stroke={stroke} strokeWidth={1.7} fill="none">
-        <line x1={x + dir * gap} y1={y} x2={x + dir * (gap + offset)} y2={y - 7} />
-        <line x1={x + dir * gap} y1={y} x2={x + dir * (gap + offset)} y2={y} />
-        <line x1={x + dir * gap} y1={y} x2={x + dir * (gap + offset)} y2={y + 7} />
+        {bar}
+        {optional && (
+          horizontal
+            ? <circle cx={x + dir * circleAt} cy={y} r={CIRCLE_R} fill="hsl(var(--background))" />
+            : <circle cx={x} cy={y + dir * circleAt} r={CIRCLE_R} fill="hsl(var(--background))" />
+        )}
       </g>
     );
   }
 
+  // many — crow's foot: the three prongs splay out right at the entity (TOUCH from the node
+  // border) and converge to a single point further out (TOUCH + SPAN), where the line
+  // continues toward the other entity. (Not the reverse — three lines converging to a point
+  // AT the table would read as an arrowhead pointing into it, not crow's-foot notation.)
+  const footFar = TOUCH + SPAN;
+  const circleAt = footFar + CIRCLE_GAP + CIRCLE_R;
+  const foot = horizontal ? (
+    <>
+      <line x1={x + dir * TOUCH} y1={y - 7} x2={x + dir * footFar} y2={y} />
+      <line x1={x + dir * TOUCH} y1={y} x2={x + dir * footFar} y2={y} />
+      <line x1={x + dir * TOUCH} y1={y + 7} x2={x + dir * footFar} y2={y} />
+    </>
+  ) : (
+    <>
+      <line x1={x - 7} y1={y + dir * TOUCH} x2={x} y2={y + dir * footFar} />
+      <line x1={x} y1={y + dir * TOUCH} x2={x} y2={y + dir * footFar} />
+      <line x1={x + 7} y1={y + dir * TOUCH} x2={x} y2={y + dir * footFar} />
+    </>
+  );
   return (
     <g stroke={stroke} strokeWidth={1.7} fill="none">
-      <line x1={x} y1={y + dir * gap} x2={x - 7} y2={y + dir * (gap + offset)} />
-      <line x1={x} y1={y + dir * gap} x2={x} y2={y + dir * (gap + offset)} />
-      <line x1={x} y1={y + dir * gap} x2={x + 7} y2={y + dir * (gap + offset)} />
+      {foot}
+      {optional && (
+        horizontal
+          ? <circle cx={x + dir * circleAt} cy={y} r={CIRCLE_R} fill="hsl(var(--background))" />
+          : <circle cx={x} cy={y + dir * circleAt} r={CIRCLE_R} fill="hsl(var(--background))" />
+      )}
     </g>
   );
 }

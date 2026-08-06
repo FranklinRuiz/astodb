@@ -121,6 +121,19 @@ export function Canvas() {
     return map;
   }, [activeDiagram]);
 
+  // `${tableId} ${columnId}` -> isNullable, so the "one" cardinality mark near the parent can
+  // show the correct min-cardinality (a mandatory-vs-optional circle) based on whether the
+  // child's actual FK column is nullable, instead of always assuming mandatory.
+  const columnNullableById = useMemo(() => {
+    const map = new Map<string, boolean>();
+    for (const node of activeDiagram?.nodes ?? []) {
+      for (const column of node.data.table.columns) {
+        map.set(`${node.id} ${column.id}`, column.isNullable);
+      }
+    }
+    return map;
+  }, [activeDiagram]);
+
   // A column can carry more than one relation on the same side (e.g. a PK referenced by
   // several FKs) — they all exit from that column's single handle point. Group edges by
   // (table, column, side) and rank each one by the vertical position of the table it connects
@@ -195,6 +208,13 @@ export function Canvas() {
       const sourceColumnId = edge.data?.sourceColumnId;
       const targetColumnId = edge.data?.targetColumnId;
 
+      // The "one" mark near the parent (source) reflects whether the child's own FK column
+      // (target side) is nullable — nullable means a child row can exist without a parent, so
+      // that end is optional (0 or 1) rather than strictly mandatory (exactly 1).
+      const sourceOptional = targetColumnId
+        ? columnNullableById.get(`${edge.target} ${targetColumnId}`) ?? true
+        : true;
+
       return {
         ...edge,
         ...(sourceColumnId && { sourceHandle: `${sourceColumnId}-source-${forward ? 'right' : 'left'}` }),
@@ -207,10 +227,11 @@ export function Canvas() {
           sourceFanCount: fan?.sourceCount ?? 1,
           targetFanIndex: fan?.targetIndex ?? 0,
           targetFanCount: fan?.targetCount ?? 1,
+          sourceOptional,
         } as RelationEdgeType['data'],
       };
     });
-  }, [rawEdges, connectedEdgeIds, focusTableId, fanAssignment]);
+  }, [rawEdges, connectedEdgeIds, focusTableId, fanAssignment, columnNullableById]);
 
   const settings = activeDiagram?.settings;
 

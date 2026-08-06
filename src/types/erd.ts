@@ -133,6 +133,10 @@ export interface RelationData extends Record<string, unknown> {
   sourceFanCount?: number;
   targetFanIndex?: number;
   targetFanCount?: number;
+  /** Whether the "one" mark near the parent (source) should show as optional (0 or 1, drawn
+   *  with a circle) rather than mandatory (exactly 1) — reflects whether the child's actual FK
+   *  column allows NULL. */
+  sourceOptional?: boolean;
 }
 
 export type RelationEdge = Edge<RelationData, 'relationEdge'>;
