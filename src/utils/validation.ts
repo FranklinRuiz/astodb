@@ -45,9 +45,13 @@ export function validateDiagram(diagram: Diagram): ValidationIssue[] {
         });
       }
 
+      // Only "created_at" is flagged: it's almost always meant to be stamped once,
+      // on insert, by the database. "updated_at" is frequently maintained by the
+      // application or a trigger instead (SQL Server has no ON UPDATE clause), so
+      // requiring a DEFAULT there produces false positives.
       const normalizedName = column.name.trim().toLowerCase();
       if (
-        (normalizedName === 'created_at' || normalizedName === 'updated_at') &&
+        normalizedName === 'created_at' &&
         !(column.defaultValue && /getdate|sysdatetime|current_timestamp/i.test(column.defaultValue))
       ) {
         issues.push({
