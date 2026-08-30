@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import {
   Database,
-  Plus,
   Search,
+  X,
   MoreHorizontal,
   Copy,
   Trash2,
@@ -113,15 +113,6 @@ export function Sidebar() {
 
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => addTable()}>
-                <Plus className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">New table (Ctrl/Cmd + N)</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCommandPaletteOpen(true)}>
                 <Search className="w-4 h-4" />
               </Button>
@@ -131,7 +122,7 @@ export function Sidebar() {
 
           <div className="w-6 border-t border-border my-1" />
 
-          <div className="flex-1 w-full min-h-0 overflow-y-auto flex flex-col items-center gap-1.5 px-1.5">
+          <div className="flex-1 w-full min-h-0 overflow-y-auto flex flex-col items-center gap-1.5 px-1.5 py-1">
             {tables.map((table) => (
               <TableChip
                 key={table.id}
@@ -247,20 +238,33 @@ export function Sidebar() {
       </div>
 
       {/* Tables header */}
-      <div className="px-3 py-2.5 flex items-center justify-between">
+      <div className="px-3 py-2.5">
         <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
           Tables ({tables.length})
         </span>
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => addTable()} title="New table (Cmd/Ctrl + N)">
-          <Plus className="w-3.5 h-3.5" />
-        </Button>
       </div>
 
       {/* Search */}
       <div className="px-3 pb-2">
         <div className="relative">
           <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search tables, columns..." className="h-7 pl-8 text-xs" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Escape' && search) { e.stopPropagation(); setSearch(''); } }}
+            placeholder="Search tables, columns..."
+            className="h-7 pl-8 pr-7 text-xs"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              title="Clear search"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-sm grid place-items-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -277,13 +281,13 @@ export function Sidebar() {
             )}
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-1">
             {Object.entries(groupedTables).map(([schema, groupTables]) => (
               <div key={schema}>
-                <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                <div className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                   {schema}
                 </div>
-                <div className="space-y-0.5">
+                <div className="space-y-0">
                   {groupTables.map((table) => {
                     const tableIssues = issues.filter((i) => i.tableId === table.id);
                     const hasError = tableIssues.some((i) => i.severity === 'error');
@@ -302,7 +306,7 @@ export function Sidebar() {
                           if (e.key === 'Enter' || e.key === ' ') { selectTable(table.id); setPropertiesOpen(true); }
                         }}
                         className={cn(
-                          'w-full text-left px-2 py-1.5 rounded-md flex flex-col gap-1 text-sm transition-colors group cursor-pointer',
+                          'w-full text-left px-2 py-1 rounded-md flex flex-col gap-0.5 text-sm transition-colors group cursor-pointer',
                           selectedTableId === table.id ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/50'
                         )}
                       >

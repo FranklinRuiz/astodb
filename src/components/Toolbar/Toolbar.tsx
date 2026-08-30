@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  Download,
   Save,
   FolderOpen,
   Sun,
@@ -23,8 +22,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
 } from '@/components/UI/dropdown-menu';
 import {
   Tooltip,
@@ -236,82 +233,52 @@ export function Toolbar() {
 
         <div className="w-px h-5 bg-border mx-1" />
 
-        {/* Open project */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleOpenProject}
-              className="h-8 gap-1.5"
-            >
-              <FolderOpen className="w-3.5 h-3.5" />
-              <span className="text-xs">Open</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Open project file (.asto) to continue editing</TooltipContent>
-        </Tooltip>
-
-        {/* Import DBML */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => { setDbmlImportError(null); setDbmlImportOpen(true); }}
-              className="h-8 gap-1.5"
-            >
-              <FileUp className="w-3.5 h-3.5" />
-              <span className="text-xs">Import DBML</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Paste a DBML script (e.g. from dbdiagram.io) to build the diagram</TooltipContent>
-        </Tooltip>
-
-        {/* Save project */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleSaveProject}
-              className="h-8 gap-1.5"
-            >
-              <Save className="w-3.5 h-3.5" />
-              <span className="text-xs">Save</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Save project (.asto) — reload to continue editing later</TooltipContent>
-        </Tooltip>
-
-        {/* Export dropdown: SQL / images */}
+        {/* Open dropdown: project file / DBML import */}
         <DropdownMenu>
           <Tooltip>
             <TooltipTrigger asChild>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-8 gap-1.5">
-                  <Download className="w-3.5 h-3.5" />
-                  <span className="text-xs">Export</span>
+                  <FolderOpen className="w-3.5 h-3.5" />
+                  <span className="text-xs">Open</span>
                 </Button>
               </DropdownMenuTrigger>
             </TooltipTrigger>
-            <TooltipContent>Export diagram</TooltipContent>
+            <TooltipContent>Open a project file or import from DBML</TooltipContent>
           </Tooltip>
-          <DropdownMenuContent align="start" className="w-52">
-            <DropdownMenuLabel>Generate</DropdownMenuLabel>
-            <DropdownMenuItem onClick={handleExportSQL}>
-              <FileCode className="w-3.5 h-3.5" />
-              T-SQL script (.sql)
+          <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuItem onClick={handleOpenProject}>
+              <FolderOpen className="w-3.5 h-3.5" />
+              Open project (.asto)
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleExportDBML}>
-              <Braces className="w-3.5 h-3.5" />
-              DBML script (.dbml)
+            <DropdownMenuItem onClick={() => { setDbmlImportError(null); setDbmlImportOpen(true); }}>
+              <FileUp className="w-3.5 h-3.5" />
+              Import from DBML...
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel>Image</DropdownMenuLabel>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Save dropdown: project file / PNG export */}
+        <DropdownMenu>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 gap-1.5">
+                  <Save className="w-3.5 h-3.5" />
+                  <span className="text-xs">Save</span>
+                </Button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent>Save the project, or export it as an image</TooltipContent>
+          </Tooltip>
+          <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuItem onClick={handleSaveProject}>
+              <Save className="w-3.5 h-3.5" />
+              Save project (.asto)
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={handleExportDocPNG}>
               <FileImage className="w-3.5 h-3.5" />
-              PNG image
+              Export PNG image
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
