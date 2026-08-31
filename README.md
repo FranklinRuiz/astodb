@@ -9,6 +9,8 @@
   </a>
   <br />
   <br />
+  <img src="docs/example.png" alt="astoDB — an agile-tracking schema modeled as an ERD, with tables, crow's-foot relations, and live model validation" width="100%" />
+  <p><em>A real-world schema (issues, sprints, developers) modeled end-to-end — tables, typed columns, crow's-foot relations, and validation, all on one canvas.</em></p>
 </div>
 
 ---
