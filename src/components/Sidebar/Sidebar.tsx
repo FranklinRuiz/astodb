@@ -94,7 +94,7 @@ export function Sidebar() {
         {/* h-12 matches the toolbar so the border line runs flush across both */}
         <div className="h-12 w-full border-b border-border flex items-center justify-center gap-1 flex-shrink-0">
           <div className="h-7 rounded-md bg-black dark:bg-white flex items-center justify-center flex-shrink-0 overflow-hidden">
-            <img src="/icon.svg" alt={APP_NAME} className="h-full w-auto invert dark:invert-0" />
+            <img src={`${import.meta.env.BASE_URL}icon.svg`} alt={APP_NAME} className="h-full w-auto invert dark:invert-0" />
           </div>
         </div>
 
@@ -161,7 +161,7 @@ export function Sidebar() {
       {/* App header — h-12 matches the toolbar so the border line runs flush across both */}
       <div className="h-12 px-4 border-b border-border flex items-center gap-2.5 flex-shrink-0">
         <div className="h-7 rounded-md bg-black dark:bg-white flex items-center justify-center flex-shrink-0 overflow-hidden">
-          <img src="/icon.svg" alt={APP_NAME} className="h-full w-auto invert dark:invert-0" />
+          <img src={`${import.meta.env.BASE_URL}icon.svg`} alt={APP_NAME} className="h-full w-auto invert dark:invert-0" />
         </div>
         <div className="min-w-0 flex-1 leading-tight">
           <h1 className="font-semibold text-sm tracking-tight truncate">{APP_NAME}</h1>
