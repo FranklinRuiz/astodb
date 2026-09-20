@@ -30,6 +30,15 @@ import { APP_NAME, APP_TAGLINE } from '@/constants';
 import { validateDiagram } from '@/utils/validation';
 import type { Table } from '@/types';
 
+function AppLogo({ className }: { className?: string }) {
+  return (
+    <>
+      <img src={`${import.meta.env.BASE_URL}icon-light-theme.svg`} alt={APP_NAME} className={cn(className, 'dark:hidden')} />
+      <img src={`${import.meta.env.BASE_URL}icon-dark-theme.svg`} alt={APP_NAME} className={cn(className, 'hidden dark:block')} />
+    </>
+  );
+}
+
 export function Sidebar() {
   const [search, setSearch] = useState('');
   const diagrams = useDiagramStore((s) => s.diagrams);
@@ -93,9 +102,7 @@ export function Sidebar() {
       <aside className="w-14 border-r border-border bg-card flex flex-col items-center h-full">
         {/* h-12 matches the toolbar so the border line runs flush across both */}
         <div className="h-12 w-full border-b border-border flex items-center justify-center gap-1 flex-shrink-0">
-          <div className="h-7 rounded-md bg-black dark:bg-white flex items-center justify-center flex-shrink-0 overflow-hidden">
-            <img src={`${import.meta.env.BASE_URL}icon.svg`} alt={APP_NAME} className="h-full w-auto invert dark:invert-0" />
-          </div>
+          <AppLogo className="h-7 w-7 rounded-md flex-shrink-0" />
         </div>
 
         <div className="flex-1 w-full min-h-0 flex flex-col items-center gap-1.5 py-3">
@@ -160,9 +167,7 @@ export function Sidebar() {
     <aside className="w-72 border-r border-border bg-card flex flex-col h-full">
       {/* App header — h-12 matches the toolbar so the border line runs flush across both */}
       <div className="h-12 px-4 border-b border-border flex items-center gap-2.5 flex-shrink-0">
-        <div className="h-7 rounded-md bg-black dark:bg-white flex items-center justify-center flex-shrink-0 overflow-hidden">
-          <img src={`${import.meta.env.BASE_URL}icon.svg`} alt={APP_NAME} className="h-full w-auto invert dark:invert-0" />
-        </div>
+        <AppLogo className="h-7 w-7 rounded-md flex-shrink-0" />
         <div className="min-w-0 flex-1 leading-tight">
           <h1 className="font-semibold text-sm tracking-tight truncate">{APP_NAME}</h1>
           <p className="text-[10px] text-muted-foreground truncate">{APP_TAGLINE}</p>
